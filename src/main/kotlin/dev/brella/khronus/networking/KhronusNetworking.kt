@@ -1,12 +1,19 @@
 package dev.brella.khronus.networking
 
 import dev.brella.khronus.Khronus.MOD_ID
-import net.minecraft.entity.Entity
-import net.minecraftforge.fml.common.network.NetworkRegistry
-import net.minecraftforge.fml.relauncher.Side
+import net.minecraft.util.ResourceLocation
+import net.minecraftforge.fml.network.NetworkDirection
+import net.minecraftforge.fml.network.NetworkRegistry
+import java.util.*
 
 object KhronusNetworking {
-    val INSTANCE = NetworkRegistry.INSTANCE.newSimpleChannel(MOD_ID)
+    const val PROTOCOL_VERSION = "1"
+    val INSTANCE = NetworkRegistry.newSimpleChannel(
+        ResourceLocation(MOD_ID, "main"),
+        { PROTOCOL_VERSION },
+        { true },
+        { true }
+    )
 
     const val UPDATE_TICK_LENGTHS = 0
 
@@ -17,7 +24,14 @@ object KhronusNetworking {
 //        )
 //    }
 
+    @Suppress("INACCESSIBLE_TYPE")
     fun registerMessages() {
-        INSTANCE.registerMessage(KhronusUpdateTickLengthsMessage.Handler, KhronusUpdateTickLengthsMessage::class.java, UPDATE_TICK_LENGTHS, Side.CLIENT)
+        INSTANCE.registerMessage(UPDATE_TICK_LENGTHS,
+            KhronusUpdateTickLengthsMessage::class.java,
+            KhronusUpdateTickLengthsMessage.Companion::encode,
+            KhronusUpdateTickLengthsMessage.Companion::decode,
+            KhronusUpdateTickLengthsMessage.Companion::handle,
+            Optional.of(NetworkDirection.PLAY_TO_CLIENT)
+        )
     }
 }

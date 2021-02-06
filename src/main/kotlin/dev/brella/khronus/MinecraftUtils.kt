@@ -1,29 +1,17 @@
 package dev.brella.khronus
 
-import dev.brella.khronus.commands.BasicChildCommand
-import dev.brella.khronus.commands.BasicChildCommandWithCompletion
-import dev.brella.khronus.commands.PipeCommand
-import net.minecraft.block.state.IBlockState
-import net.minecraft.command.ICommand
-import net.minecraft.command.ICommandSender
-import net.minecraft.init.Blocks
-import net.minecraft.item.ItemStack
+import net.minecraft.profiler.IProfiler
 import net.minecraft.profiler.Profiler
-import net.minecraft.server.MinecraftServer
 import net.minecraft.tileentity.TileEntity
-import net.minecraft.util.math.BlockPos
-import net.minecraft.world.EnumSkyBlock
+import net.minecraft.util.RegistryKey
+import net.minecraft.world.DimensionType
 import net.minecraft.world.World
-import net.minecraft.world.WorldType
-import net.minecraft.world.chunk.Chunk
-import net.minecraft.world.chunk.storage.ExtendedBlockStorage
-import net.minecraftforge.common.util.BlockSnapshot
-import net.minecraftforge.fml.common.event.FMLServerStartingEvent
-import net.minecraftforge.fml.common.network.NetworkRegistry
-import net.minecraftforge.fml.common.network.NetworkRegistry.TargetPoint
-import net.minecraftforge.fml.common.network.simpleimpl.IMessage
-import net.minecraftforge.fml.common.network.simpleimpl.SimpleNetworkWrapper
-import net.minecraftforge.server.command.CommandTreeBase
+import kotlin.reflect.KMutableProperty1
+import kotlin.reflect.KProperty1
+import kotlin.reflect.full.declaredMemberProperties
+import kotlin.reflect.jvm.isAccessible
+
+class SetArgumentType()
 
 /*fun World.setBlockState(pos: BlockPos, newState: IBlockState, flags: Int, configureTileEntity: (tileEntity: TileEntity) -> Unit): Boolean {
     var pos = pos
@@ -144,20 +132,6 @@ fun Chunk.setBlockState(pos: BlockPos, state: IBlockState, configureTileEntity: 
     }
 }*/
 
-fun ItemStack.equals(other: ItemStack, ignoreStackSize: Boolean): Boolean {
-    return if (!ignoreStackSize && count != other.count) {
-        false
-    } else if (item !== other.item) {
-        false
-    } else if (itemDamage != other.itemDamage) {
-        false
-    } else if (tagCompound == null && other.tagCompound != null) {
-        false
-    } else {
-        (tagCompound == null || tagCompound == other.tagCompound) && areCapsCompatible(other)
-    }
-}
-
 /**
  * Sends this message to everyone tracking a point.
  * The [IMessageHandler] for this message type should be on the CLIENT side.
@@ -166,110 +140,22 @@ fun ItemStack.equals(other: ItemStack, ignoreStackSize: Boolean): Boolean {
  * @param message The message to send
  * @param point The tracked [TargetPoint] around which to send
  */
-inline fun SimpleNetworkWrapper.sendToAllTracking(message: IMessage?, entity: TileEntity) =
-    sendToAllTracking(message, entity.pos.toTargetPoint(entity.world.provider.dimension, 1.0))
+//inline fun SimpleNetworkWrapper.sendToAllTracking(message: IMessage?, entity: TileEntity) =
+//    sendToAllTracking(message, entity.pos.toTargetPoint(entity.world.provider.dimension, 1.0))
+//
+//inline fun BlockPos.toTargetPoint(dimension: Int, range: Double): NetworkRegistry.TargetPoint =
+//    NetworkRegistry.TargetPoint(dimension, x.toDouble(), y.toDouble(), z.toDouble(), range)
 
-inline fun BlockPos.toTargetPoint(dimension: Int, range: Double): NetworkRegistry.TargetPoint =
-    NetworkRegistry.TargetPoint(dimension, x.toDouble(), y.toDouble(), z.toDouble(), range)
+@Suppress("UNCHECKED_CAST")
+val WORLD_TILE_ENTITIES_TO_BE_REMOVED = World::class.declaredMemberProperties.first { it.name == "tileEntitiesToBeRemoved" || it.name == "field_147483_b" }
+    .let { it as KProperty1<World, MutableSet<TileEntity>> }
+    .apply { isAccessible = true }
 
-const val NUM_X_BITS = 26
-const val NUM_Z_BITS = NUM_X_BITS
-const val NUM_Y_BITS = 64 - NUM_X_BITS - NUM_Z_BITS
-const val Y_SHIFT = 0 + NUM_Z_BITS
-const val X_SHIFT = Y_SHIFT + NUM_Y_BITS
-const val X_MASK = (1L shl NUM_X_BITS) - 1L
-const val Y_MASK = (1L shl NUM_Y_BITS) - 1L
-const val Z_MASK = (1L shl NUM_Z_BITS) - 1L
+//TODO: Replace with a functioning access transformer
+inline fun <T> World.getTileEntitiesToBeRemoved(block: World.(tileEntitiesToBeRemoved: MutableSet<TileEntity>) -> T) =
+    block(WORLD_TILE_ENTITIES_TO_BE_REMOVED.get(this))
 
-inline fun BlockPos.MutableBlockPos.setFromLong(long: Long): BlockPos.MutableBlockPos {
-    val x =
-        (long shl 64 - X_SHIFT - NUM_X_BITS shr 64 - NUM_X_BITS).toInt()
-    val y =
-        (long shl 64 - Y_SHIFT - NUM_Y_BITS shr 64 - NUM_Y_BITS).toInt()
-    val z = (long shl 64 - NUM_Z_BITS shr 64 - NUM_Z_BITS).toInt()
-
-    return setPos(x, y, z)
-}
-
-inline fun buildPipeCommand(name: String, block: PipeCommand.() -> Unit) =
-    PipeCommand(name).apply(block)
-
-inline fun FMLServerStartingEvent.registerPipeCommand(name: String, block: PipeCommand.() -> Unit) =
-    registerServerCommand(buildPipeCommand(name, block))
-
-inline fun <T : CommandTreeBase> T.addPipe(name: String, block: PipeCommand.() -> Unit): T {
-    addSubcommand(PipeCommand(name).apply(block))
-    return this
-}
-
-inline fun <T : CommandTreeBase> T.addCommand(cmd: ICommand): T {
-    addSubcommand(cmd)
-    return this
-}
-
-inline fun <T : CommandTreeBase> T.addCommand(
-    name: String,
-    noinline execute: (server: MinecraftServer, sender: ICommandSender, args: Array<String>) -> Unit
-): T {
-    addSubcommand(BasicChildCommand(name, execute))
-    return this
-}
-
-inline fun <T : CommandTreeBase> T.addCommand(
-    name: String,
-    noinline tabCompletion: (
-        server: MinecraftServer,
-        sender: ICommandSender,
-        args: Array<String>,
-        targetPos: BlockPos?
-    ) -> MutableList<String>,
-    noinline execute: (server: MinecraftServer, sender: ICommandSender, args: Array<String>) -> Unit
-): T {
-    addSubcommand(BasicChildCommandWithCompletion(name, tabCompletion, execute))
-    return this
-}
-
-inline fun <T : CommandTreeBase> T.addCommand(
-    name: String,
-    values: List<String>,
-    noinline execute: (server: MinecraftServer, sender: ICommandSender, args: Array<String>) -> Unit
-): T {
-    addSubcommand(BasicChildCommandWithCompletion(name, { _, _, args, _ ->
-        args.last().let { existing ->
-            values.mapNotNullTo(ArrayList()) { name ->
-                name.takeIf {
-                    existing.isBlank() ||
-                            it.startsWith(existing, true)
-                }
-            }
-        }
-    }, execute))
-    return this
-}
-
-inline fun <T : CommandTreeBase> T.addCommand(
-    name: String,
-    crossinline values: () -> List<String>,
-    noinline execute: (server: MinecraftServer, sender: ICommandSender, args: Array<String>) -> Unit
-): T {
-    addSubcommand(BasicChildCommandWithCompletion(name, { _, _, args, _ ->
-        args.last().let { existing ->
-            values().mapNotNullTo(ArrayList()) { name ->
-                name.takeIf {
-                    existing.isBlank() ||
-                            it.startsWith(existing, true)
-                }
-            }
-        }
-    }, execute))
-    return this
-}
-
-/**
- *
- */
-
-inline fun <R> Profiler.section(name: String, block: () -> R): R =
+inline fun <R> IProfiler.section(name: String, block: () -> R): R =
     try {
         startSection(name)
         block()
@@ -277,9 +163,9 @@ inline fun <R> Profiler.section(name: String, block: () -> R): R =
         endSection()
     }
 
-inline fun <R> Profiler.section(noinline name: () -> String, block: () -> R): R =
+inline fun <R> IProfiler.section(noinline name: () -> String, block: () -> R): R =
     try {
-        func_194340_a(name)
+        startSection(name)
 
         block()
     } finally {
@@ -297,3 +183,12 @@ inline operator fun <V> MutableMap<Int, V>.set(te: TileEntity, value: V): V? =
 
 inline fun <V> MutableMap<Int, V>.remove(te: TileEntity): V? =
     remove(te.distinctHashCode())
+
+inline val World.dimensionType: DimensionType
+    get() = this.func_230315_m_()
+
+inline val World.dimensionTypeKey: RegistryKey<DimensionType>
+    get() = this.func_234922_V_()
+
+inline val World.dimensionKey: RegistryKey<World>
+    get() = func_234923_W_()

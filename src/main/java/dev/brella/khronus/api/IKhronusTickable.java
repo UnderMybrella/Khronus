@@ -1,12 +1,12 @@
 package dev.brella.khronus.api;
 
-import net.minecraft.util.ITickable;
+import net.minecraft.tileentity.ITickableTileEntity;
 
-public interface IKhronusTickable extends ITickable {
+public interface IKhronusTickable extends ITickableTileEntity {
     @Override
-    default void update() {
-        update(1, 0);
+    default void tick() {
+        tick(1, 0);
     }
 
-    void update(int ticks, int bonusTicks);
+    void tick(int ticks, int bonusTicks);
 }

@@ -1,41 +1,35 @@
 package dev.brella.khronus.networking
 
 import dev.brella.khronus.Khronus
-import dev.brella.khronus.proxy.ClientProxy
-import io.netty.buffer.ByteBuf
-import net.minecraftforge.fml.common.network.simpleimpl.IMessage
-import net.minecraftforge.fml.common.network.simpleimpl.IMessageHandler
-import net.minecraftforge.fml.common.network.simpleimpl.MessageContext
+import net.minecraft.network.PacketBuffer
+import net.minecraft.util.ResourceLocation
+import net.minecraftforge.fml.network.NetworkEvent
+import java.util.function.Supplier
 
-class KhronusUpdateTickLengthsMessage: IMessage {
-    var dimensionID: Int? = null
-    val tickLengths: MutableMap<Long, Long> = HashMap()
+data class KhronusUpdateTickLengthsMessage(var dimension: ResourceLocation, val tickLengths: Map<Long, Long>) {
+    companion object {
+        fun encode(msg: KhronusUpdateTickLengthsMessage, buf: PacketBuffer) {
+            buf.writeResourceLocation(msg.dimension)
+            buf.writeIntLE(msg.tickLengths.size)
 
-    override fun fromBytes(buf: ByteBuf) {
-        dimensionID = buf.readIntLE()
-        val len = buf.readIntLE()
+            msg.tickLengths.forEach { (pos, len) -> buf.writeLongLE(pos); buf.writeLongLE(len) }
+        }
 
-        repeat(len) { tickLengths[buf.readLongLE()] = buf.readLongLE() }
-    }
+        fun decode(buf: PacketBuffer): KhronusUpdateTickLengthsMessage =
+            KhronusUpdateTickLengthsMessage(buf.readResourceLocation(), HashMap<Long, Long>().apply {
+                repeat(buf.readIntLE()) {
+                    this[buf.readLongLE()] = buf.readLongLE()
+                }
+            })
 
-    override fun toBytes(buf: ByteBuf) {
-        buf.writeIntLE(dimensionID ?: 0)
-        buf.writeIntLE(tickLengths.size)
-
-        tickLengths.forEach { (pos, len) -> buf.writeLongLE(pos); buf.writeLongLE(len) }
-    }
-
-    object Handler: IMessageHandler<KhronusUpdateTickLengthsMessage, IMessage?> {
-        override fun onMessage(message: KhronusUpdateTickLengthsMessage, ctx: MessageContext): IMessage? {
-            val proxy = Khronus.proxy as ClientProxy
-            if (message.dimensionID != proxy.tickTimesDimension) {
+        fun handle(msg: KhronusUpdateTickLengthsMessage, context: Supplier<NetworkEvent.Context>) {
+            val proxy = Khronus.clientProxy ?: return
+            if (msg.dimension != proxy.tickTimesDimension) {
                 proxy.tickTimes.clear()
-                proxy.tickTimesDimension = message.dimensionID
+                proxy.tickTimesDimension = msg.dimension
             }
 
-            proxy.tickTimes.putAll(message.tickLengths)
-
-            return null
+            proxy.tickTimes.putAll(msg.tickLengths)
         }
     }
 }

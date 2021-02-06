@@ -2,19 +2,21 @@ package dev.brella.khronus.examples.item
 
 import dev.brella.khronus.Khronus
 import net.minecraft.item.Item
+import net.minecraftforge.registries.DeferredRegister
+import net.minecraftforge.registries.ForgeRegistries
 import net.minecraftforge.registries.IForgeRegistry
+import thedarkcolour.kotlinforforge.forge.KDeferredRegister
+import thedarkcolour.kotlinforforge.forge.MOD_BUS
+import thedarkcolour.kotlinforforge.forge.MOD_CONTEXT
 
 object KhronusItems {
-    val lagometerGoggles = ItemLagometerGoggles()
+    private val ITEMS = KDeferredRegister(ForgeRegistries.ITEMS, Khronus.MOD_ID)
 
-    val items: Array<Item> = arrayOf(lagometerGoggles)
-
-    fun register(registry: IForgeRegistry<Item>) {
-        items.forEach(registry::register)
+    val lagometerGoggles = ITEMS.registerObject("lagometer_goggles") {
+        LagometerGogglesItem(Item.Properties().group(Khronus.itemGroup))
     }
 
-    fun registerModels() {
-        items.forEach { item -> Khronus.proxy.registerItemRenderer(item, 0, (item as IModItem).name) }
-//        Minegate.proxy.registerItemRenderer(debugZeus, 0, debugZeus.name)
+    fun register() {
+        ITEMS.register(MOD_BUS)
     }
 }

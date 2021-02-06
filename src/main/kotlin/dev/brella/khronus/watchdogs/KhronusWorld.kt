@@ -2,8 +2,8 @@ package dev.brella.khronus.watchdogs
 
 import dev.brella.khronus.api.TemporalBounds
 import dev.brella.khronus.api.IKhronusTickable
+import net.minecraft.tileentity.ITickableTileEntity
 import net.minecraft.tileentity.TileEntity
-import net.minecraft.util.ITickable
 import net.minecraft.util.math.BlockPos
 import net.minecraft.world.World
 import java.util.*
@@ -21,7 +21,7 @@ abstract class KhronusWorld: KhronusWatchdog {
             is IKhronusTickable -> world.khronusTickableTileEntities[tileEntity] =
                 TemporalBounds(1, null, null)
 
-            is ITickable -> world.tickableTileEntities.add(tileEntity)
+            is ITickableTileEntity -> world.tickableTileEntities.add(tileEntity)
         }
     }
 

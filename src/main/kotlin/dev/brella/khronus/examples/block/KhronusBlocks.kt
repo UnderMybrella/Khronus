@@ -2,56 +2,62 @@ package dev.brella.khronus.examples.block
 
 import dev.brella.khronus.Khronus
 import dev.brella.khronus.Khronus.MOD_ID
-import net.minecraft.block.Block
-import net.minecraft.block.BlockFurnace
-import net.minecraft.block.SoundType
-import net.minecraft.creativetab.CreativeTabs
+import dev.brella.khronus.examples.entity.LavaFurnaceTileEntity
+import dev.brella.khronus.examples.entity.CounterTileEntity
+import net.minecraft.block.AbstractBlock
+import net.minecraft.block.material.Material
+import net.minecraft.item.BlockItem
 import net.minecraft.item.Item
-import net.minecraft.item.ItemBlock
-import net.minecraft.util.ResourceLocation
-import net.minecraftforge.registries.IForgeRegistry
+import net.minecraft.state.properties.BlockStateProperties
+import net.minecraft.tileentity.TileEntityType
+import net.minecraftforge.registries.DeferredRegister
+import net.minecraftforge.registries.ForgeRegistries
+import thedarkcolour.kotlinforforge.forge.KDeferredRegister
+import thedarkcolour.kotlinforforge.forge.MOD_BUS
+import thedarkcolour.kotlinforforge.forge.MOD_CONTEXT
 
 object KhronusBlocks {
-    val lavaFurnace = BlockLavaFurnace(false)
-        .setHardness(3.5f)
-        .setSoundType(SoundType.STONE)
-        .setCreativeTab(Khronus.creativeTab)
+    private val BLOCKS = KDeferredRegister(ForgeRegistries.BLOCKS, MOD_ID)
+    private val ITEMS = KDeferredRegister(ForgeRegistries.ITEMS, MOD_ID)
+    private val TILES = KDeferredRegister(ForgeRegistries.TILE_ENTITIES, MOD_ID)
 
-    val litLavaFurnace = BlockLavaFurnace(true)
-        .setHardness(3.5f)
-        .setSoundType(SoundType.STONE)
-        .setLightLevel(0.875f)
-
-    val warpDrive = BlockWarpDrive()
-        .setHardness(99f)
-        .setSoundType(SoundType.GLASS)
-
-    val counter = BlockCounter()
-        .setHardness(1f)
-        .setSoundType(SoundType.GLASS)
-
-    val blocks = mapOf(
-        lavaFurnace to "lava_furnace",
-        litLavaFurnace to "lit_lava_furnace",
-        warpDrive to "warp_drive",
-        counter to "counter"
-    )
-
-    fun register(registry: IForgeRegistry<Block>) {
-        blocks.forEach { (block, name) ->
-            registry.register(block.setRegistryName(MOD_ID, name).setTranslationKey(name))
-        }
+    val lavaFurnace = BLOCKS.registerObject("lava_furnace") {
+        BlockLavaFurnace(AbstractBlock.Properties.create(Material.ROCK)
+            .setRequiresTool()
+            .hardnessAndResistance(3.5f)
+            .setLightLevel { state -> if (state.get(BlockStateProperties.LIT)) 13 else 0 }
+        )
     }
 
-    fun registerItemBlocks(registry: IForgeRegistry<Item>) {
-        blocks.forEach { (block, name) ->
-            registry.register(ItemBlock(block).setRegistryName(MOD_ID, name))
-        }
+    val lavaFurnaceItem = ITEMS.registerObject("lava_furnace") {
+        BlockItem(lavaFurnace.get(), Item.Properties().group(Khronus.itemGroup))
     }
 
-    fun registerModels() {
-        blocks.forEach { (block, name) ->
-            Khronus.proxy.registerItemRenderer(Item.getItemFromBlock(block), 0, name)
-        }
+    val lavaFurnaceTile = TILES.registerObject("lava_furnace") {
+        TileEntityType.Builder.create({ LavaFurnaceTileEntity() }, lavaFurnace.get()).build(null)
+    }
+
+    val counter = BLOCKS.registerObject("counter") {
+        CounterBlock(AbstractBlock.Properties.create(Material.GLASS))
+    }
+
+    val counterItem = ITEMS.registerObject("counter") {
+        BlockItem(counter.get(), Item.Properties().group(Khronus.itemGroup))
+    }
+
+    val counterTile = TILES.registerObject("counter") {
+        TileEntityType.Builder.create({ CounterTileEntity() }, counter.get()).build(null)
+    }
+
+    //TODO
+//    val warpDrive = BlockWarpDrive()
+//        .setHardness(99f)
+//        .setSoundType(SoundType.GLASS)
+//
+
+    fun register() {
+        BLOCKS.register(MOD_BUS)
+        ITEMS.register(MOD_BUS)
+        TILES.register(MOD_BUS)
     }
 }

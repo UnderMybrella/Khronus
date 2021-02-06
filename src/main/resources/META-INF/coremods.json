@@ -1,0 +1,4 @@
+{
+  "world_init_fields": "asm/worldInitFields.js",
+  "world_update_tick": "asm/worldUpdateTick.js"
+}

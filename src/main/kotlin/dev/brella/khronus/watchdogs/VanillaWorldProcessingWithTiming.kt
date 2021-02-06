@@ -1,77 +1,169 @@
 package dev.brella.khronus.watchdogs
 
 import dev.brella.khronus.TickDog
-import dev.brella.khronus.nanosecondsToMicrosecondApprox
 import dev.brella.khronus.section
-import dev.brella.khronus.set
+import dev.brella.khronus.getTileEntitiesToBeRemoved
 import net.minecraft.crash.CrashReport
+import net.minecraft.crash.ReportedException
+import net.minecraft.tileentity.ITickableTileEntity
 import net.minecraft.tileentity.TileEntity
-import net.minecraft.util.ITickable
-import net.minecraft.util.ReportedException
 import net.minecraft.world.World
 import net.minecraft.world.chunk.Chunk
-import net.minecraftforge.common.ForgeModContainer
-import net.minecraftforge.fml.common.FMLLog
+import net.minecraftforge.common.ForgeConfig
 import net.minecraftforge.server.timings.TimeTracker
+import org.apache.logging.log4j.LogManager
+import kotlin.collections.ArrayList
+import kotlin.collections.forEach
+import kotlin.collections.indices
+import kotlin.collections.isNotEmpty
+import kotlin.collections.set
 import kotlin.system.measureNanoTime
 
 object VanillaWorldProcessingWithTiming : KhronusWatchdog {
-    override fun updateEntities(world: World) = with(world) {
-        val iterator = tickableTileEntities.iterator()
-        val khronusTickLength = tickLength
+//    override fun updateEntities(world: World) = with(world) {
+//        val iterator = tickableTileEntities.iterator()
+//        val khronusTickLength = tickLength
+//
+//        TickDog.worldTickLengths.computeIfAbsent(world) { ArrayList(20) }
+//            .add(System.currentTimeMillis() to measureNanoTime {
+//                while (iterator.hasNext()) {
+//                    val tileEntity = iterator.next()
+//                    if (!tileEntity.isInvalid && tileEntity.hasWorld()) {
+//                        val blockPos = tileEntity.pos
+//                        //Forge: Fix TE's getting an extra tick on the client side....
+//                        if (this.isBlockLoaded(
+//                                blockPos,
+//                                false
+//                            ) && worldBorder.contains(blockPos)
+//                        ) {
+//                            try {
+//                                profiler.section({ TileEntity.getKey(tileEntity.javaClass).toString() }) {
+//                                    TimeTracker.TILE_ENTITY_UPDATE.trackStart(tileEntity)
+//                                    val nanos = measureNanoTime { (tileEntity as ITickable).update() }
+//                                    TimeTracker.TILE_ENTITY_UPDATE.trackEnd(tileEntity)
+//                                    val taken = nanos.nanosecondsToMicrosecondApprox()
+//
+//                                    khronusTickLength[tileEntity] = taken
+//                                }
+//                            } catch (throwable: Throwable) {
+//                                val crashReport = CrashReport.makeCrashReport(throwable, "Ticking block entity")
+//                                val crashReportCategory = crashReport.makeCategory("Block entity being ticked")
+//                                tileEntity.addInfoToCrashReport(crashReportCategory)
+//                                if (ForgeModContainer.removeErroringTileEntities) {
+//                                    FMLLog.log.fatal("{}", crashReport.completeReport)
+//                                    tileEntity.invalidate()
+//                                    removeTileEntity(tileEntity.pos)
+//                                } else throw ReportedException(crashReport)
+//                            }
+//                        }
+//                    }
+//
+//                    if (tileEntity.isInvalid) {
+//                        iterator.remove()
+//                        loadedTileEntityList.remove(tileEntity)
+//                        if (this.isBlockLoaded(tileEntity.pos)) {
+//                            //Forge: Bugfix: If we set the tile entity it immediately sets it in the chunk, so we could be desyned
+//                            val chunk = this.getChunk(tileEntity.pos)
+//                            if (chunk.getTileEntity(
+//                                    tileEntity.pos,
+//                                    Chunk.EnumCreateEntityType.CHECK
+//                                ) === tileEntity
+//                            ) chunk.removeTileEntity(tileEntity.pos)
+//                        }
+//                    }
+//                }
+//            } / 1_000_000.0)
+//
+//        TickDog.ticks[world] = TickDog.ticks[world]?.plus(1) ?: 1
+//
+//        tickableTileEntities.sortBy(khronusTickLength::get)
+//    }
 
+    override fun tickBlockEntities(world: World) = with(world) {
         TickDog.worldTickLengths.computeIfAbsent(world) { ArrayList(20) }
             .add(System.currentTimeMillis() to measureNanoTime {
-                while (iterator.hasNext()) {
-                    val tileEntity = iterator.next()
-                    if (!tileEntity.isInvalid && tileEntity.hasWorld()) {
-                        val blockPos = tileEntity.pos
-                        //Forge: Fix TE's getting an extra tick on the client side....
-                        if (this.isBlockLoaded(
-                                blockPos,
-                                false
-                            ) && worldBorder.contains(blockPos)
-                        ) {
-                            try {
-                                profiler.section({ TileEntity.getKey(tileEntity.javaClass).toString() }) {
-                                    TimeTracker.TILE_ENTITY_UPDATE.trackStart(tileEntity)
-                                    val nanos = measureNanoTime { (tileEntity as ITickable).update() }
-                                    TimeTracker.TILE_ENTITY_UPDATE.trackEnd(tileEntity)
-                                    val taken = nanos.nanosecondsToMicrosecondApprox()
+                val iprofiler = profiler
+                iprofiler.startSection("blockEntities")
+                processingLoadedTiles = true // Forge: Move above remove to prevent CMEs
 
-                                    khronusTickLength[tileEntity] = taken
+                getTileEntitiesToBeRemoved { tileEntitiesToBeRemoved ->
+                    if (tileEntitiesToBeRemoved.isNotEmpty()) {
+                        tileEntitiesToBeRemoved.forEach(TileEntity::onChunkUnloaded)
+                        tickableTileEntities.removeAll(tileEntitiesToBeRemoved)
+                        loadedTileEntityList.removeAll(tileEntitiesToBeRemoved)
+                        tileEntitiesToBeRemoved.clear()
+                    }
+                }
+
+                val iterator = tickableTileEntities.iterator()
+                val khronusTickLength = tickLength
+
+                while (iterator.hasNext()) {
+                    val tileentity = iterator.next()
+                    if (!tileentity.isRemoved && tileentity.hasWorld()) {
+                        val blockpos = tileentity.pos
+                        if (this.chunkProvider.canTick(blockpos) && worldBorder.contains(blockpos)) {
+                            try {
+                                TimeTracker.TILE_ENTITY_UPDATE.trackStart(tileentity)
+                                iprofiler.section({ tileentity.type.registryName.toString() }) {
+                                    //TODO: Optimise this in other versions
+                                    if (tileentity.type.isValidBlock(getBlockState(blockpos).block)) {
+                                        (tileentity as ITickableTileEntity).tick()
+                                    } else {
+                                        tileentity.warnInvalidBlock()
+                                    }
                                 }
                             } catch (throwable: Throwable) {
-                                val crashReport = CrashReport.makeCrashReport(throwable, "Ticking block entity")
-                                val crashReportCategory = crashReport.makeCategory("Block entity being ticked")
-                                tileEntity.addInfoToCrashReport(crashReportCategory)
-                                if (ForgeModContainer.removeErroringTileEntities) {
-                                    FMLLog.log.fatal("{}", crashReport.completeReport)
-                                    tileEntity.invalidate()
-                                    removeTileEntity(tileEntity.pos)
-                                } else throw ReportedException(crashReport)
+                                val crashreport = CrashReport.makeCrashReport(throwable, "Ticking block entity")
+                                val crashreportcategory = crashreport.makeCategory("Block entity being ticked")
+                                tileentity.addInfoToCrashReport(crashreportcategory)
+                                if (ForgeConfig.SERVER.removeErroringTileEntities.get()) {
+                                    LogManager.getLogger().fatal("{}", crashreport.completeReport)
+                                    tileentity.remove()
+                                    this.removeTileEntity(tileentity.pos)
+                                } else throw ReportedException(crashreport)
+                            } finally {
+                                TimeTracker.TILE_ENTITY_UPDATE.trackEnd(tileentity)
                             }
                         }
                     }
-
-                    if (tileEntity.isInvalid) {
+                    if (tileentity.isRemoved) {
                         iterator.remove()
-                        loadedTileEntityList.remove(tileEntity)
-                        if (this.isBlockLoaded(tileEntity.pos)) {
+                        loadedTileEntityList.remove(tileentity)
+                        if (isBlockLoaded(tileentity.pos)) {
                             //Forge: Bugfix: If we set the tile entity it immediately sets it in the chunk, so we could be desyned
-                            val chunk = this.getChunk(tileEntity.pos)
-                            if (chunk.getTileEntity(
-                                    tileEntity.pos,
-                                    Chunk.EnumCreateEntityType.CHECK
-                                ) === tileEntity
-                            ) chunk.removeTileEntity(tileEntity.pos)
+                            val chunk = getChunkAt(tileentity.pos)
+                            if (chunk.getTileEntity(tileentity.pos, Chunk.CreateEntityType.CHECK) === tileentity)
+                                chunk.removeTileEntity(tileentity.pos)
                         }
                     }
                 }
+
+                processingLoadedTiles = false
+                iprofiler.endStartSection("pendingBlockEntities")
+                if (addedTileEntityList.isNotEmpty()) {
+                    for (i in addedTileEntityList.indices) {
+                        val tileentity1 = addedTileEntityList[i]
+                        if (!tileentity1.isRemoved) {
+                            if (!loadedTileEntityList.contains(tileentity1)) {
+                                this.addTileEntity(tileentity1)
+                            }
+                            if (isBlockLoaded(tileentity1.pos)) {
+                                val chunk = getChunkAt(tileentity1.pos)
+                                val blockstate = chunk.getBlockState(tileentity1.pos)
+                                chunk.addTileEntity(tileentity1.pos, tileentity1)
+                                notifyBlockUpdate(tileentity1.pos, blockstate, blockstate, 3)
+                            }
+                        }
+                    }
+                    addedTileEntityList.clear()
+                }
+
+                iprofiler.endSection()
             } / 1_000_000.0)
 
         TickDog.ticks[world] = TickDog.ticks[world]?.plus(1) ?: 1
 
-        tickableTileEntities.sortBy(khronusTickLength::get)
+//        tickableTileEntities.sortBy(khronusTickLength::get)
     }
 }
