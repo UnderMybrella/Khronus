@@ -260,15 +260,20 @@ object KhronusSynchronousWorldProcessingWithTiming : KhronusWorld() {
                             try {
                                 TimeTracker.TILE_ENTITY_UPDATE.trackStart(tileentity)
                                 iprofiler.section({ tileentity.type.registryName.toString() }) {
-                                    //TODO: Optimise this in other versions
-                                    if (tileentity.type.isValidBlock(getBlockState(blockpos).block)) {
-                                        (tileentity as ITickableTileEntity).tick()
-                                    } else {
-                                        tileentity.warnInvalidBlock()
+                                    val nanos = measureNanoTime {
+                                        //TODO: Optimise this in other versions
+                                        if (tileentity.type.isValidBlock(getBlockState(blockpos).block)) {
+                                            (tileentity as ITickableTileEntity).tick()
+                                        } else {
+                                            tileentity.warnInvalidBlock()
+                                        }
                                     }
+                                    val taken = nanos.nanosecondsToMicrosecondApprox()
+
+                                    khronusTickLength[tileentity] = taken
                                 }
                             } catch (throwable: Throwable) {
-                                val crashreport = CrashReport.makeCrashReport(throwable, "Ticking block entity")
+                                val crashreport = CrashReport.makeCrashReport(throwable, "Ticking block entity in KhronusSynchronous")
                                 val crashreportcategory = crashreport.makeCategory("Block entity being ticked")
                                 tileentity.addInfoToCrashReport(crashreportcategory)
                                 if (ForgeConfig.SERVER.removeErroringTileEntities.get()) {

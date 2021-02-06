@@ -1,5 +1,6 @@
 package dev.brella.khronus.proxy
 
+import dev.brella.khronus.Khronus
 import dev.brella.khronus.ThreadListenerDispatcher
 import dev.brella.khronus.examples.item.ILagometer
 import kotlinx.coroutines.CoroutineDispatcher
@@ -15,12 +16,17 @@ import net.minecraft.inventory.EquipmentSlotType
 import net.minecraft.util.ResourceLocation
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.shapes.ISelectionContext
+import net.minecraft.util.math.shapes.VoxelShapes
+import net.minecraft.util.math.vector.Matrix4f
 import net.minecraft.world.World
 import net.minecraftforge.client.event.RenderWorldLastEvent
 import net.minecraftforge.eventbus.api.SubscribeEvent
+import net.minecraftforge.fml.common.Mod
 import java.util.concurrent.ConcurrentHashMap
 
-class ClientProxy : KhronusProxy() {
+
+@Mod.EventBusSubscriber(modid = Khronus.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE)
+object ClientProxy : KhronusProxy() {
     private val minecraftDispatcher: CoroutineDispatcher by lazy { ThreadListenerDispatcher(Minecraft.getInstance()) }
     public var tickTimesDimension: ResourceLocation? = null
     public val tickTimes: MutableMap<Long, Long> = ConcurrentHashMap()
@@ -41,25 +47,43 @@ class ClientProxy : KhronusProxy() {
             val buffer = IRenderTypeBuffer.getImpl(Tessellator.getInstance().buffer)
             val context = ISelectionContext.forEntity(player)
 
+            val viewPos = Minecraft.getInstance().gameRenderer.activeRenderInfo.projectedView
+
             laggiest.forEach { (te, time) ->
                 val iblockstate = world.getBlockState(blockpos.setPos(te))
 
-                if (iblockstate.material !== Material.AIR && player.world.worldBorder.contains(blockpos)) {
-                    val d3: Double =
-                        player.lastTickPosX + (player.posX - player.lastTickPosX) * event.partialTicks.toDouble()
-                    val d4: Double =
-                        player.lastTickPosY + (player.posY - player.lastTickPosY) * event.partialTicks.toDouble()
-                    val d5: Double =
-                        player.lastTickPosZ + (player.posZ - player.lastTickPosZ) * event.partialTicks.toDouble()
+                val matrix4f: Matrix4f = event.matrixStack.last.matrix
 
-                    WorldRenderer.drawBoundingBox(
-                        event.matrixStack, buffer.getBuffer(RenderType.getLines()),
-                        iblockstate.getShape(player.world, blockpos, context)
-                            .boundingBox
-                            .grow(0.0020000000949949026).offset(-d3, -d4, -d5),
-                        1.0f, 0.0f, 0.0f, 0.8f)
+                if (iblockstate.material !== Material.AIR && player.world.worldBorder.contains(blockpos)) {
+//                    val d3: Double =
+//                        player.lastTickPosX + (player.posX - player.lastTickPosX) * event.partialTicks.toDouble()
+//                    val d4: Double =
+//                        player.lastTickPosY + (player.posY - player.lastTickPosY) * event.partialTicks.toDouble()
+//                    val d5: Double =
+//                        player.lastTickPosZ + (player.posZ - player.lastTickPosZ) * event.partialTicks.toDouble()
+
+                    val bufferIn = buffer.getBuffer(RenderType.getLines())
+
+
+
+                    WorldRenderer.drawBoundingBox(event.matrixStack, bufferIn, iblockstate.getShape(player.world, blockpos, context).boundingBox.offset(blockpos).offset(viewPos.inverse()), 1.0f, 0.0f, 0.0f, 1.0f)
+//                        .forEachEdge { xMin: Double, yMin: Double, zMin: Double, xMax: Double, yMax: Double, zMax: Double ->
+//                            bufferIn.pos(matrix4f,
+//                                (xMin + blockpos.x - viewPos.x).toFloat(),
+//                                (yMin + blockpos.y - viewPos.y).toFloat(),
+//                                (zMin + blockpos.z - viewPos.z).toFloat()
+//                            ).color(1.0f, 0.0f, 0.0f, 1.0f).endVertex()
+//
+//                            bufferIn.pos(matrix4f,
+//                                (xMax + blockpos.x - viewPos.x).toFloat(),
+//                                (yMax + blockpos.y - viewPos.y).toFloat(),
+//                                (zMax + blockpos.z - viewPos.z).toFloat()
+//                            ).color(1.0f, 0.0f, 0.0f, 1.0f).endVertex()
+//                        }
                 }
             }
+
+            buffer.finish()
         }
     }
 }

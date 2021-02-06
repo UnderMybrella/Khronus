@@ -1,16 +1,38 @@
 function initializeCoreMod() {
+    var fields = ["khronusTickableTileEntities", "tickAcceleration", "tickLength", "tickCheckups"];
+
 	return {
+	    'worldAddFields': {
+	        'target': {
+	            'type': 'CLASS',
+	            'name': 'net.minecraft.world.World'
+	        },
+	        'transformer': function(classNode) {
+    	        var ASMAPI = Java.type('net.minecraftforge.coremod.api.ASMAPI');
+	            ASMAPI.log('INFO', '{Khronus} Adding \'World\' ASM fields...');
+
+	            var Opcodes = Java.type('org.objectweb.asm.Opcodes');
+
+                for (var i = 0; i < fields.length; i++) {
+	                classNode.visitField(Opcodes.ACC_PUBLIC, fields[i], "Ljava/util/Map;", "Ljava/util/Map<Lnet/minecraft/tileentity/TileEntity;Ldev/brella/khronus/api/TemporalBounds;>;", null).visitEnd();
+	            }
+
+	            ASMAPI.log('INFO', '{Khronus} Added \'World\' ASM fields...');
+
+	            return classNode;
+	        }
+	    },
 		'worldInitFields': {
 			'target': {
 				'type': 'METHOD',
 				'class': 'net.minecraft.world.World',
 				'methodName': '<init>',
-				'methodDesc': '(Lnet/minecraft/world/storage/ISpawnWorldInfo;Lnet/minecraft/util/RegistryKey<Lnet/minecraft/world/World;>;Lnet/minecraft/util/RegistryKey<Lnet/minecraft/world/DimensionType;>;Lnet/minecraft/world/DimensionType;Ljava/util/function/Supplier<Lnet/minecraft/profiler/IProfiler;>;ZZJ)V'
+				'methodDesc': '(Lnet/minecraft/world/storage/ISpawnWorldInfo;Lnet/minecraft/util/RegistryKey;Lnet/minecraft/util/RegistryKey;Lnet/minecraft/world/DimensionType;Ljava/util/function/Supplier;ZZJ)V'
 			},
 			'transformer': function(method) {
 				var ASMAPI = Java.type('net.minecraftforge.coremod.api.ASMAPI');
 
-                ASMAPI.log('INFO', 'Adding \'World#init\' ASM patch...');
+                ASMAPI.log('INFO', '{Khronus} Adding \'World#init\' ASM patch...');
 
                 var Opcodes = Java.type('org.objectweb.asm.Opcodes');
                 var VarInsnNode = Java.type('org.objectweb.asm.tree.VarInsnNode');
@@ -29,8 +51,6 @@ function initializeCoreMod() {
 
                 var newInstructions = new InsnList();
 
-                var fields = ["khronusTickableTileEntities", "tickAcceleration", "tickLength", "tickCheckups"];
-
                 for (var i = 0; i < fields.length; i++) {
                     newInstructions.add(new VarInsnNode(Opcodes.ALOAD, 0)); //World
 
@@ -43,7 +63,7 @@ function initializeCoreMod() {
 
                 method.instructions.insertBefore(worldReturn, newInstructions);
 
-                ASMAPI.log('INFO', 'Added \'World#init\' ASM patch!');
+                ASMAPI.log('INFO', '{Khronus} Added \'World#init\' ASM patch!');
                 return method;
 			}
 		}

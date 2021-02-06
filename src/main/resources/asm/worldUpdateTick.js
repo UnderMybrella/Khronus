@@ -10,7 +10,7 @@ function initializeCoreMod() {
 			'transformer': function(method) {
 				var ASMAPI = Java.type('net.minecraftforge.coremod.api.ASMAPI');
 
-                ASMAPI.log('INFO', 'Adding \'tickBlockEntities\' ASM patch...');
+                ASMAPI.log('INFO', '{Khronus} Adding \'tickBlockEntities\' ASM patch...');
 
                 var Opcodes = Java.type('org.objectweb.asm.Opcodes');
                 var VarInsnNode = Java.type('org.objectweb.asm.tree.VarInsnNode');
@@ -37,7 +37,7 @@ function initializeCoreMod() {
 
                 method.instructions.add(new InsnNode(Opcodes.RETURN));
 
-                ASMAPI.log('INFO', 'Added \'tickBlockEntities\' ASM patch!');
+                ASMAPI.log('INFO', '{Khronus} Added \'tickBlockEntities\' ASM patch!');
                 return method;
 			}
 		}

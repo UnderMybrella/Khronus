@@ -1,6 +1,7 @@
 package dev.brella.khronus.examples.block
 
 import dev.brella.khronus.examples.entity.CounterTileEntity
+import net.minecraft.block.BlockRenderType
 import net.minecraft.block.BlockState
 import net.minecraft.block.ContainerBlock
 import net.minecraft.entity.player.PlayerEntity
@@ -38,7 +39,7 @@ class CounterBlock(builder: Properties) : ContainerBlock(builder) {
         pos: BlockPos,
         playerIn: PlayerEntity,
         hand: Hand,
-        raytrace: BlockRayTraceResult
+        raytrace: BlockRayTraceResult,
     ): ActionResultType {
         if (worldIn.isRemote) {
             val te = worldIn.getTileEntity(pos) as? CounterTileEntity ?: return ActionResultType.PASS
@@ -59,4 +60,8 @@ class CounterBlock(builder: Properties) : ContainerBlock(builder) {
 
     override fun createNewTileEntity(worldIn: IBlockReader): TileEntity =
         CounterTileEntity()
+
+    override fun getRenderType(state: BlockState?): BlockRenderType? {
+        return BlockRenderType.MODEL
+    }
 }

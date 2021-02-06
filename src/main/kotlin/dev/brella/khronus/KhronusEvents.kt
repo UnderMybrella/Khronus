@@ -1,6 +1,7 @@
 package dev.brella.khronus
 
 import com.mojang.brigadier.Command
+import com.mojang.brigadier.Command.SINGLE_SUCCESS
 import dev.brella.khronus.api.KhronusApi
 import dev.brella.khronus.networking.KhronusNetworking
 import dev.brella.khronus.networking.KhronusUpdateTickLengthsMessage
@@ -9,7 +10,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import net.minecraft.command.Commands
+import net.minecraft.command.Commands.argument
 import net.minecraft.command.Commands.literal
+import net.minecraft.command.arguments.DimensionArgument
+import net.minecraft.util.ResourceLocation
 import net.minecraft.util.text.StringTextComponent
 import net.minecraft.world.World
 import net.minecraftforge.event.RegisterCommandsEvent
@@ -41,6 +45,86 @@ object KhronusEvents {
                     ).executes { context ->
                         context.source.sendFeedback(StringTextComponent("Watchdog: ${TickDog.watchdog}"), true)
                         return@executes Command.SINGLE_SUCCESS
+                    }
+                )
+                .then(literal("tps")
+                    .then(argument("world", DimensionArgument.getDimension())
+                        .executes { context ->
+                            if (TickDog.worldTickRates.isEmpty()) {
+                                context.source.sendErrorMessage(StringTextComponent("No tick rate data available"))
+                                return@executes 0
+                            } else {
+                                val dimensionArgument = context.getArgument("world", ResourceLocation::class.java)
+
+                                val feedback = buildString {
+                                    TickDog.worldTickRates.forEach { (world, rate) ->
+                                        if (world.dimensionKey.func_240901_a_() != dimensionArgument)
+                                            return@forEach
+
+                                        append('[')
+                                        if (world.isRemote) append("Client") else append("Server")
+                                        append("] '")
+                                        append(world.dimensionKey.func_240901_a_())
+                                        append("' (")
+                                        append(rate.ticksPerSecond)
+                                        append("/20): ")
+
+                                        append(rate.minimumTickLength.toTwoDecimalPlaces())
+                                        append(" ≤ ")
+                                        append(rate.averageTickLength.toTwoDecimalPlaces())
+                                        append(" ≤ ")
+                                        append(rate.maximumTickLength.toTwoDecimalPlaces())
+
+                                        append(" {")
+                                        append(rate.firstTickLength.toTwoDecimalPlaces())
+                                        append(",..,")
+                                        append(rate.lastTickLength.toTwoDecimalPlaces())
+                                        append("}\n")
+                                    }
+                                }
+
+                                if (feedback.isNotBlank()) {
+                                    context.source.sendFeedback(StringTextComponent(feedback), true)
+
+                                    return@executes SINGLE_SUCCESS
+                                } else {
+                                    context.source.sendErrorMessage(StringTextComponent("No tick rate data for $dimensionArgument available"))
+
+                                    return@executes 0
+                                }
+                            }
+                        }
+                    ).executes { context ->
+                        if (TickDog.worldTickRates.isEmpty()) {
+                            context.source.sendErrorMessage(StringTextComponent("No tick rate data available"))
+                            return@executes 0
+                        } else {
+                            context.source.sendFeedback(StringTextComponent(buildString {
+                                TickDog.worldTickRates.forEach { (world, rate) ->
+                                    append('[')
+                                    if (world.isRemote) append("Client") else append("Server")
+                                    append("] '")
+                                    append(world.dimensionKey.func_240901_a_())
+                                    append("' (")
+                                    append(rate.ticksPerSecond)
+                                    append("/20): ")
+
+                                    append(rate.minimumTickLength.toTwoDecimalPlaces())
+                                    append(" ≤ ")
+                                    append(rate.averageTickLength.toTwoDecimalPlaces())
+                                    append(" ≤ ")
+                                    append(rate.maximumTickLength.toTwoDecimalPlaces())
+
+                                    append(" {")
+                                    append(rate.firstTickLength.toTwoDecimalPlaces())
+                                    append(",..,")
+                                    append(rate.lastTickLength.toTwoDecimalPlaces())
+                                    append("}\n")
+                                }
+                            }), true)
+
+                            return@executes SINGLE_SUCCESS
+                        }
                     }
                 )
         )
@@ -82,41 +166,13 @@ object KhronusEvents {
 //                sender.sendMessage(StringTextComponent("Set max tick time for any tile entity to $asInt μs, or ${((asInt / 976.0) * 100).roundToInt() / 100.0} ms"),
 //                    Util.DUMMY_UUID)
 //            }
-//            addCommand("tps") { _, sender, _ ->
-//                if (TickDog.worldTickRates.isEmpty()) {
-//                    sender.sendMessage(StringTextComponent("No tick rate data available"))
-//                } else {
-//                    sender.sendMessage(StringTextComponent(buildString {
-//                        TickDog.worldTickRates.forEach { (world, rate) ->
-//                            append('[')
-//                            if (world.isRemote) append("Client") else append("Server")
-//                            append("] '")
-//                            append(world.func_234922_V_().registryName)
-//                            append("' (")
-//                            append(rate.ticksPerSecond)
-//                            append("/20): ")
-//
-//                            append(rate.minimumTickLength.toTwoDecimalPlaces())
-//                            append(" ≤ ")
-//                            append(rate.averageTickLength.toTwoDecimalPlaces())
-//                            append(" ≤ ")
-//                            append(rate.maximumTickLength.toTwoDecimalPlaces())
-//
-//                            append(" {")
-//                            append(rate.firstTickLength.toTwoDecimalPlaces())
-//                            append(",..,")
-//                            append(rate.lastTickLength.toTwoDecimalPlaces())
-//                            append("}\n")
-//                        }
-//                    }))
-//                }
-//            }
+
 //        }
     }
 
     @SubscribeEvent
     fun loadWorld(event: WorldEvent.Load) {
-        val world = event.world.world
+        val world = event.world as? World ?: return
 
         if (world.isRemote) return
 

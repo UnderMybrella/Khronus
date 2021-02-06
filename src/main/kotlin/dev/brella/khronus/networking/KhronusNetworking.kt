@@ -17,13 +17,6 @@ object KhronusNetworking {
 
     const val UPDATE_TICK_LENGTHS = 0
 
-//    fun setPortalController(portal: TileEntityGatePortal) {
-//        INSTANCE.sendToAllTracking(
-//                GatePortalSetControllerMessage(portal.world.provider.dimension, portal.pos, portal.controller ?: return),
-//                portal
-//        )
-//    }
-
     @Suppress("INACCESSIBLE_TYPE")
     fun registerMessages() {
         INSTANCE.registerMessage(UPDATE_TICK_LENGTHS,

@@ -4,6 +4,7 @@ import dev.brella.khronus.Khronus
 import dev.brella.khronus.Khronus.MOD_ID
 import dev.brella.khronus.examples.entity.LavaFurnaceTileEntity
 import dev.brella.khronus.examples.entity.CounterTileEntity
+import dev.brella.khronus.examples.entity.WarpDriveTileEntity
 import net.minecraft.block.AbstractBlock
 import net.minecraft.block.material.Material
 import net.minecraft.item.BlockItem
@@ -49,11 +50,17 @@ object KhronusBlocks {
         TileEntityType.Builder.create({ CounterTileEntity() }, counter.get()).build(null)
     }
 
-    //TODO
-//    val warpDrive = BlockWarpDrive()
-//        .setHardness(99f)
-//        .setSoundType(SoundType.GLASS)
-//
+    val warpDrive = BLOCKS.registerObject("warp_drive") {
+        WarpDriveBlock(AbstractBlock.Properties.create(Material.PORTAL))
+    }
+
+    val warpDriveItem = ITEMS.registerObject("warp_drive") {
+        BlockItem(warpDrive.get(), Item.Properties().group(Khronus.itemGroup))
+    }
+
+    val warpDriveTile = TILES.registerObject("warp_drive") {
+        TileEntityType.Builder.create({ WarpDriveTileEntity() }, warpDrive.get()).build(null)
+    }
 
     fun register() {
         BLOCKS.register(MOD_BUS)

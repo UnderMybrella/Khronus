@@ -38,7 +38,7 @@ object Khronus : CoroutineScope {
 
     public val logger = LogManager.getLogger(MOD_ID)
 
-    public val clientProxy: ClientProxy? = if (FMLEnvironment.dist == Dist.CLIENT) ClientProxy() else null
+    public val clientProxy: ClientProxy? = if (FMLEnvironment.dist == Dist.CLIENT) ClientProxy else null
 
     public val itemGroup: ItemGroup = object : ItemGroup(MOD_ID) {
         override fun createIcon(): ItemStack = ItemStack(KhronusBlocks.lavaFurnace.get())
@@ -52,8 +52,6 @@ object Khronus : CoroutineScope {
     fun commonSetup(event: FMLCommonSetupEvent) {
 //        config = Configuration(event.suggestedConfigurationFile)
 
-        KhronusNetworking.registerMessages()
-
 //        Minecraft.getMinecraft().connection
 
 //        KhronusVanilla.register()
@@ -66,5 +64,7 @@ object Khronus : CoroutineScope {
     init {
         KhronusBlocks.register()
         KhronusItems.register()
+
+        KhronusNetworking.registerMessages()
     }
 }

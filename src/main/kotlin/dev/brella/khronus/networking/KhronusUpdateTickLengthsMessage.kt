@@ -30,6 +30,8 @@ data class KhronusUpdateTickLengthsMessage(var dimension: ResourceLocation, val 
             }
 
             proxy.tickTimes.putAll(msg.tickLengths)
+
+            context.get().packetHandled = true
         }
     }
 }
