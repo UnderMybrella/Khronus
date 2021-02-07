@@ -1,0 +1,31 @@
+{
+  "parent": "block/block",
+  "ambientocclusion": false,
+  "elements": [
+    {
+      "from": [ 0, 0, 0 ],
+      "to": [ 16, 16, 16 ],
+      "faces": {
+        "down":  { "texture": "#base", "cullface": "down", "tintindex": 0 },
+        "up":    { "texture": "#base", "cullface": "up", "tintindex": 0 },
+        "north": { "texture": "#base", "cullface": "north", "tintindex": 0 },
+        "south": { "texture": "#base", "cullface": "south", "tintindex": 0 },
+        "west":  { "texture": "#base", "cullface": "west", "tintindex": 0 },
+        "east":  { "texture": "#base", "cullface": "east", "tintindex": 0 }
+      }
+    },
+    {
+      "from": [ 0, 0, 0 ],
+      "to": [ 16, 16, 16 ],
+      "shade": false,
+      "faces": {
+        "down":  { "texture": "#layer_1", "cullface": "down", "tintindex": 1 },
+        "up":    { "texture": "#layer_1", "cullface": "up", "tintindex": 1 },
+        "north": { "texture": "#layer_1", "cullface": "north", "tintindex": 1 },
+        "south": { "texture": "#layer_1", "cullface": "south", "tintindex": 1 },
+        "west":  { "texture": "#layer_1", "cullface": "west", "tintindex": 1 },
+        "east":  { "texture": "#layer_1", "cullface": "east", "tintindex": 1 }
+      }
+    }
+  ]
+}

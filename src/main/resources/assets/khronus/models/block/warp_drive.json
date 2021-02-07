@@ -1,0 +1,7 @@
+{
+  "parent": "khronus:block/dual_textured",
+  "textures": {
+    "base": "minecraft:block/stone",
+    "layer_1": "minecraft:item/clock_00"
+  }
+}
