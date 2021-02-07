@@ -25,11 +25,18 @@ data class KhronusUpdateTickLengthsMessage(var dimension: ResourceLocation, val 
         fun handle(msg: KhronusUpdateTickLengthsMessage, context: Supplier<NetworkEvent.Context>) {
             val proxy = Khronus.clientProxy ?: return
             if (msg.dimension != proxy.tickTimesDimension) {
-                proxy.tickTimes.clear()
                 proxy.tickTimesDimension = msg.dimension
             }
 
+            proxy.tickTimes.clear()
             proxy.tickTimes.putAll(msg.tickLengths)
+
+            proxy.lagThreshold = proxy.tickTimes.values.average()
+
+            proxy.laggiest.clear()
+            proxy.tickTimes.entries.sortedByDescending(Map.Entry<Long, Long>::value)
+                .filterTo(proxy.laggiest) { (_, value) -> value > proxy.lagThreshold }
+
 
             context.get().packetHandled = true
         }

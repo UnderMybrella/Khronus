@@ -58,13 +58,13 @@ object KhronusEvents {
 
                                 val feedback = buildString {
                                     TickDog.worldTickRates.forEach { (world, rate) ->
-                                        if (world.dimensionKey.func_240901_a_() != dimensionArgument)
+                                        if (world.dimensionKey.location != dimensionArgument)
                                             return@forEach
 
                                         append('[')
                                         if (world.isRemote) append("Client") else append("Server")
                                         append("] '")
-                                        append(world.dimensionKey.func_240901_a_())
+                                        append(world.dimensionKey.location)
                                         append("' (")
                                         append(rate.ticksPerSecond)
                                         append("/20): ")
@@ -104,7 +104,7 @@ object KhronusEvents {
                                     append('[')
                                     if (world.isRemote) append("Client") else append("Server")
                                     append("] '")
-                                    append(world.dimensionKey.func_240901_a_())
+                                    append(world.dimensionKey.location)
                                     append("' (")
                                     append(rate.ticksPerSecond)
                                     append("/20): ")
@@ -170,9 +170,11 @@ object KhronusEvents {
 //        }
     }
 
+
+
     @SubscribeEvent
     fun loadWorld(event: WorldEvent.Load) {
-        val world = event.world as? World ?: return
+        val world = event.world as? World ?: return Khronus.logger.info("Non-World object: ${event.world}")
 
         if (world.isRemote) return
 
@@ -183,12 +185,14 @@ object KhronusEvents {
 
                 if (world.players.isNotEmpty()) {
                     val updateTicks = KhronusUpdateTickLengthsMessage(
-                        world.dimensionTypeKey.registryName,
+                        world.dimensionKey.location,
                         KhronusApi.getTickLength(world).mapKeys { (te) -> te.pos.toLong() }
                     )
 
-                    KhronusNetworking.INSTANCE.send(PacketDistributor.DIMENSION.with { world.dimensionKey },
-                        updateTicks)
+                    KhronusNetworking.INSTANCE.send(
+                        PacketDistributor.DIMENSION.with { world.dimensionKey },
+                        updateTicks
+                    )
                 }
             }
         }

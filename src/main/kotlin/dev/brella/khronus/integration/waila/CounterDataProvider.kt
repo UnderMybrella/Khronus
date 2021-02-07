@@ -1,4 +1,4 @@
-package dev.brella.khronus.integration
+package dev.brella.khronus.integration.waila
 
 import dev.brella.khronus.examples.entity.CounterTileEntity
 import mcp.mobius.waila.api.IComponentProvider
@@ -31,8 +31,10 @@ object CounterDataProvider : IComponentProvider, IServerDataProvider<TileEntity>
         val counter = nbt.getLong("counter")
 
         tooltip.add(StringTextComponent("Clicked ${CLICK_FORMAT.format(counter)} times"))
-        tooltip.add(StringTextComponent("Born on ${Instant.ofEpochMilli(startupTime).atZone(ZoneId.systemDefault()).format(FORMATTER)}"))
-        tooltip.add(StringTextComponent("The clock strikes ${Instant.ofEpochMilli(startupTime + (counter * 50)).atZone(ZoneId.systemDefault()).format(FORMATTER)}"))
+        tooltip.add(StringTextComponent("Born on ${Instant.ofEpochMilli(startupTime).atZone(ZoneId.systemDefault()).format(
+            FORMATTER)}"))
+        tooltip.add(StringTextComponent("The clock strikes ${Instant.ofEpochMilli(startupTime + (counter * 50)).atZone(ZoneId.systemDefault()).format(
+            FORMATTER)}"))
 
         tooltip.add(StringTextComponent("Click time is ${(counter * 50).milliseconds}"))
     }

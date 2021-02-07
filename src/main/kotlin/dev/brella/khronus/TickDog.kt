@@ -9,6 +9,7 @@ import net.minecraft.world.World
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
+import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
 import kotlin.coroutines.CoroutineContext
 import kotlin.math.log2
@@ -21,7 +22,7 @@ object TickDog : CoroutineScope {
         val minimumTickLength: Double,
         val maximumTickLength: Double,
         val firstTickLength: Double,
-        val lastTickLength: Double
+        val lastTickLength: Double,
     )
 
     inline val logger get() = Khronus.logger
@@ -98,6 +99,7 @@ object TickDog : CoroutineScope {
 
     init {
         worldTickRateJob = launch {
+            val localLengths: MutableList<Map.Entry<World, MutableList<Pair<Long, Double>>>> = ArrayList()
             while (isActive) {
                 delay(1_000)
 
@@ -106,34 +108,35 @@ object TickDog : CoroutineScope {
                     val minTime = now - 1_000
                     val timeRange = (minTime + 1) until now
 
-                    worldTickLengths
-                        .entries
-                        .forEach { (world, list) ->
-                            val lastSecond = list.filter { (start) -> start in timeRange }
-                                .map(Pair<Long, Double>::second)
+                    localLengths.clear()
+                    localLengths.addAll(worldTickLengths.entries)
 
-                            if (lastSecond.isEmpty()) worldTickRates.remove(world)
-                            else {
-                                var min: Double = Double.MAX_VALUE
-                                var max: Double = Double.MIN_VALUE
-                                var sum: Double = 0.0
+                    localLengths.forEach { (world, list) ->
+                        val lastSecond = list.filter { (start) -> start in timeRange }
+                            .map(Pair<Long, Double>::second)
 
-                                lastSecond.forEach {
-                                    if (it < min) min = it
-                                    if (it > max) max = it
-                                    sum += it
-                                }
-                                worldTickRates[world] =
-                                    TickRate(lastSecond.size,
-                                        sum / lastSecond.size.toDouble(),
-                                        min,
-                                        max,
-                                        lastSecond.first(),
-                                        lastSecond.last())
+                        if (lastSecond.isEmpty()) worldTickRates.remove(world)
+                        else {
+                            var min: Double = Double.MAX_VALUE
+                            var max: Double = Double.MIN_VALUE
+                            var sum: Double = 0.0
 
-                                list.removeAll { (start) -> start < now }
+                            lastSecond.forEach {
+                                if (it < min) min = it
+                                if (it > max) max = it
+                                sum += it
                             }
+                            worldTickRates[world] =
+                                TickRate(lastSecond.size,
+                                    sum / lastSecond.size.toDouble(),
+                                    min,
+                                    max,
+                                    lastSecond.first(),
+                                    lastSecond.last())
+
+                            list.removeAll { (start) -> start < now }
                         }
+                    }
                 } catch (th: Throwable) {
                     th.printStackTrace()
                 }

@@ -1,4 +1,4 @@
-package dev.brella.khronus.integration
+package dev.brella.khronus.integration.waila
 
 import dev.brella.khronus.examples.block.CounterBlock
 import mcp.mobius.waila.api.IRegistrar

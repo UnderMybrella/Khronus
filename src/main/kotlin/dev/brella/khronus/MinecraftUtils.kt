@@ -183,12 +183,3 @@ inline operator fun <V> MutableMap<Int, V>.set(te: TileEntity, value: V): V? =
 
 inline fun <V> MutableMap<Int, V>.remove(te: TileEntity): V? =
     remove(te.distinctHashCode())
-
-inline val World.dimensionType: DimensionType
-    get() = this.func_230315_m_()
-
-inline val World.dimensionTypeKey: RegistryKey<DimensionType>
-    get() = this.func_234922_V_()
-
-inline val World.dimensionKey: RegistryKey<World>
-    get() = func_234923_W_()

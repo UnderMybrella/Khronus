@@ -27,7 +27,7 @@ function initializeCoreMod() {
 				'type': 'METHOD',
 				'class': 'net.minecraft.world.World',
 				'methodName': '<init>',
-				'methodDesc': '(Lnet/minecraft/world/storage/ISpawnWorldInfo;Lnet/minecraft/util/RegistryKey;Lnet/minecraft/util/RegistryKey;Lnet/minecraft/world/DimensionType;Ljava/util/function/Supplier;ZZJ)V'
+				'methodDesc': '(Lnet/minecraft/world/storage/ISpawnWorldInfo;Lnet/minecraft/util/RegistryKey;Lnet/minecraft/world/DimensionType;Ljava/util/function/Supplier;ZZJ)V'
 			},
 			'transformer': function(method) {
 				var ASMAPI = Java.type('net.minecraftforge.coremod.api.ASMAPI');

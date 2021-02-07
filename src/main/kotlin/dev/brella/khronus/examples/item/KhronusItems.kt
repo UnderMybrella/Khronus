@@ -16,6 +16,10 @@ object KhronusItems {
         LagometerGogglesItem(Item.Properties().group(Khronus.itemGroup))
     }
 
+    val lagList = ITEMS.registerObject("lag_list") {
+        LagListItem(Item.Properties().group(Khronus.itemGroup))
+    }
+
     fun register() {
         ITEMS.register(MOD_BUS)
     }

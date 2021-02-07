@@ -51,7 +51,7 @@ object KhronusBlocks {
     }
 
     val warpDrive = BLOCKS.registerObject("warp_drive") {
-        WarpDriveBlock(AbstractBlock.Properties.create(Material.PORTAL))
+        WarpDriveBlock(AbstractBlock.Properties.create(Material.PORTAL).setBlocksVision { p_test_1_, p_test_2_, p_test_3_ -> false })
     }
 
     val warpDriveItem = ITEMS.registerObject("warp_drive") {
