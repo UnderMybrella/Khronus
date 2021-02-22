@@ -1,23 +1,17 @@
 package dev.brella.khronus
 
+import dev.brella.khronus.api.IKhronusTickable
+import dev.brella.khronus.api.KhronusApi
 import dev.brella.khronus.commands.BasicChildCommand
 import dev.brella.khronus.commands.BasicChildCommandWithCompletion
 import dev.brella.khronus.commands.PipeCommand
-import net.minecraft.block.state.IBlockState
 import net.minecraft.command.ICommand
 import net.minecraft.command.ICommandSender
-import net.minecraft.init.Blocks
 import net.minecraft.item.ItemStack
 import net.minecraft.profiler.Profiler
 import net.minecraft.server.MinecraftServer
 import net.minecraft.tileentity.TileEntity
 import net.minecraft.util.math.BlockPos
-import net.minecraft.world.EnumSkyBlock
-import net.minecraft.world.World
-import net.minecraft.world.WorldType
-import net.minecraft.world.chunk.Chunk
-import net.minecraft.world.chunk.storage.ExtendedBlockStorage
-import net.minecraftforge.common.util.BlockSnapshot
 import net.minecraftforge.fml.common.event.FMLServerStartingEvent
 import net.minecraftforge.fml.common.network.NetworkRegistry
 import net.minecraftforge.fml.common.network.NetworkRegistry.TargetPoint
@@ -191,6 +185,10 @@ inline fun BlockPos.MutableBlockPos.setFromLong(long: Long): BlockPos.MutableBlo
     return setPos(x, y, z)
 }
 
+inline fun Long.getPosX(): Int = (this shl 64 - X_SHIFT - NUM_X_BITS shr 64 - NUM_X_BITS).toInt()
+inline fun Long.getPosY(): Int = (this shl 64 - Y_SHIFT - NUM_Y_BITS shr 64 - NUM_Y_BITS).toInt()
+inline fun Long.getPosZ(): Int = (this shl 64 - NUM_Z_BITS shr 64 - NUM_Z_BITS).toInt()
+
 inline fun buildPipeCommand(name: String, block: PipeCommand.() -> Unit) =
     PipeCommand(name).apply(block)
 
@@ -297,3 +295,12 @@ inline operator fun <V> MutableMap<Int, V>.set(te: TileEntity, value: V): V? =
 
 inline fun <V> MutableMap<Int, V>.remove(te: TileEntity): V? =
     remove(te.distinctHashCode())
+
+@Suppress("UNCHECKED_CAST")
+inline fun <T : TileEntity> T.asKhronusTickable(): IKhronusTickable<T>? =
+    when {
+        this is IKhronusTickable<*> -> this as IKhronusTickable<T>
+        hasCapability(KhronusApi.KHRONUS_TICKABLE, null) ->
+            getCapability(KhronusApi.KHRONUS_TICKABLE, null) as? IKhronusTickable<T>
+        else -> null
+    }

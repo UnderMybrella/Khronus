@@ -9,6 +9,7 @@ object KhronusNetworking {
     val INSTANCE = NetworkRegistry.INSTANCE.newSimpleChannel(MOD_ID)
 
     const val UPDATE_TICK_LENGTHS = 0
+    const val REQUEST_TICKS = 1
 
 //    fun setPortalController(portal: TileEntityGatePortal) {
 //        INSTANCE.sendToAllTracking(
@@ -19,5 +20,6 @@ object KhronusNetworking {
 
     fun registerMessages() {
         INSTANCE.registerMessage(KhronusUpdateTickLengthsMessage.Handler, KhronusUpdateTickLengthsMessage::class.java, UPDATE_TICK_LENGTHS, Side.CLIENT)
+        INSTANCE.registerMessage(KhronusRequestTicksMessage.Handler, KhronusRequestTicksMessage::class.java, REQUEST_TICKS, Side.SERVER)
     }
 }

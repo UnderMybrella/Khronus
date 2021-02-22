@@ -6,8 +6,9 @@ import net.minecraftforge.registries.IForgeRegistry
 
 object KhronusItems {
     val lagometerGoggles = ItemLagometerGoggles()
+    val lagList = ItemLagList("lag_list")
 
-    val items: Array<Item> = arrayOf(lagometerGoggles)
+    val items: Array<Item> = arrayOf(lagometerGoggles, lagList)
 
     fun register(registry: IForgeRegistry<Item>) {
         items.forEach(registry::register)

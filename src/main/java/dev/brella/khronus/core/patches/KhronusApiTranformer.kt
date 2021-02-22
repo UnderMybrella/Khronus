@@ -6,6 +6,7 @@ import java.util.function.Consumer
 
 object KhronusApiTranformer: Consumer<ClassNode> {
     val methodPatches: Map<String, Consumer<MethodNode>> = mapOf(
+        "getDelayedTileEntities" to KhronusApiWorldField(WorldTransformer.DELAYED_TICKABLE_TILE_ENTITIES),
         "getKhronusTileEntities" to KhronusApiWorldField(WorldTransformer.KHRONUS_TICKABLE_TILE_ENTITIES),
         "getTickAcceleration" to KhronusApiWorldField(WorldTransformer.KHRONUS_TICK_ACCELERATION),
         "getTickLength" to KhronusApiWorldField(WorldTransformer.KHRONUS_TICK_LENGTH),

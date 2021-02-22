@@ -21,6 +21,7 @@ object KhronusSynchronousWorldProcessingWithTiming : KhronusWorld() {
 
         TickDog.worldTickLengths.computeIfAbsent(world) { ArrayList(20) }
             .add(System.currentTimeMillis() to measureNanoTime {
+                val delayedTileEntities = delayedTickableTileEntities
                 val khronusTileEntities = khronusTickableTileEntities
                 val khronusTickAcceleration = tickAcceleration
                 val khronusTickCheckup = tickCheckup
@@ -71,11 +72,19 @@ object KhronusSynchronousWorldProcessingWithTiming : KhronusWorld() {
                                                 val averageTickTime = (checkup shr 8) shr TickDog.checkupLimitExponent
                                                 if (averageTickTime > maxTime) {
                                                     tickableIterator.remove()
-                                                    khronusTileEntities[tileEntity] =
-                                                        TemporalBounds(TickDog.microsecondsToTickDelay(
-                                                            averageTickTime),
-                                                            max(maxTime, (averageTickTime - maxTime).toInt()),
-                                                            (averageTickTime + (maxTime shl 1)).toInt())
+                                                    if (tileEntity is IKhronusTickable<*>) {
+                                                        khronusTileEntities[tileEntity] =
+                                                            TemporalBounds(TickDog.microsecondsToTickDelay(
+                                                                averageTickTime),
+                                                                max(maxTime, (averageTickTime - maxTime).toInt()),
+                                                                (averageTickTime + (maxTime shl 1)).toInt())
+                                                    } else {
+                                                        delayedTileEntities[tileEntity] =
+                                                            TemporalBounds(TickDog.microsecondsToTickDelay(
+                                                                averageTickTime),
+                                                                max(maxTime, (averageTickTime - maxTime).toInt()),
+                                                                (averageTickTime + (maxTime shl 1)).toInt())
+                                                    }
                                                 }
 
                                                 khronusTickCheckup.remove(tileEntity)
@@ -121,7 +130,9 @@ object KhronusSynchronousWorldProcessingWithTiming : KhronusWorld() {
                     val khronusIterator = khronusTileEntities.iterator()
 
                     while (khronusIterator.hasNext()) {
-                        val (tileEntity, tickRate) = khronusIterator.next()
+                        val (tickable, tickRate) = khronusIterator.next()
+                        val tileEntity = tickable.source
+
                         if (!tileEntity.isInvalid && tileEntity.hasWorld()) {
                             if (tick % tickRate.tickRate != 0) continue
 
@@ -144,24 +155,110 @@ object KhronusSynchronousWorldProcessingWithTiming : KhronusWorld() {
 
                                                 val acceleration = khronusTickAcceleration.remove(tileEntity)
 
-                                                val taken: Long
-
-                                                when (tileEntity) {
-                                                    is IKhronusTickable ->
-                                                        taken = measureNanoTime {
-                                                            tileEntity.update(tickRate.tickRate, acceleration ?: 0)
-                                                        }.nanosecondsToMicrosecondApprox()
-                                                    is ITickable -> {
-                                                        taken = measureNanoTime {
-                                                            tileEntity.update()
-                                                        }.nanosecondsToMicrosecondApprox()
-
-                                                        if (acceleration != null) for (i in 0 until acceleration) tileEntity.update()
-                                                    }
-                                                    else -> taken = 0
-                                                }
+                                                val taken: Long = measureNanoTime {
+                                                    tickable.update(tickRate.tickRate, acceleration ?: 0)
+                                                }.nanosecondsToMicrosecondApprox()
 
                                                 TimeTracker.TILE_ENTITY_UPDATE.trackEnd(tileEntity)
+
+                                                taken
+                                            }
+
+                                        khronusTickLength[tileEntity] = taken
+
+                                        if (checkup != null) {
+                                            checkup += 1 or (taken.toInt().and(0xFFFFFF) shl 8)
+
+                                            if (checkup and 0xFF >= TickDog.checkupLimit) {
+                                                val averageTickTime = (checkup shr 8) shr TickDog.checkupLimitExponent
+                                                if (averageTickTime > maxTime) {
+                                                    khronusTileEntities[tickable] =
+                                                        TemporalBounds(TickDog.microsecondsToTickDelay(
+                                                            averageTickTime),
+                                                            max(maxTime, (averageTickTime - maxTime).toInt()),
+                                                            (averageTickTime + (maxTime shl 1)).toInt())
+                                                } else if (tickRate.minTime != null && averageTickTime < tickRate.minTime) {
+                                                    khronusTileEntities[tickable] =
+                                                        tickRate.copy(tickRate = 1, minTime = null, maxTime = null)
+                                                }
+
+                                                khronusTickCheckup.remove(tileEntity)
+                                            } else {
+                                                khronusTickCheckup[tileEntity] = checkup
+                                            }
+                                        } else if (taken > (tickRate.maxTime ?: maxTime)) {
+                                            khronusTickCheckup[tileEntity] =
+                                                1L or (taken shl 8)
+                                        } else if (tickRate.minTime != null && taken < tickRate.minTime) {
+                                            khronusTickCheckup[tileEntity] =
+                                                1L or (taken shl 8)
+                                        }
+
+                                        Unit
+                                    }
+                                } catch (throwable: Throwable) {
+                                    val crashReport = CrashReport.makeCrashReport(throwable, "Ticking block entity")
+                                    val crashReportCategory = crashReport.makeCategory("Block entity being ticked")
+                                    tileEntity.addInfoToCrashReport(crashReportCategory)
+                                    if (ForgeModContainer.removeErroringTileEntities) {
+                                        FMLLog.log.fatal("{}", crashReport.completeReport)
+                                        tileEntity.invalidate()
+                                        removeTileEntity(tileEntity.pos)
+                                    } else throw ReportedException(crashReport)
+                                }
+                            }
+                        }
+
+                        if (tileEntity.isInvalid) {
+                            khronusIterator.remove()
+                            loadedTileEntityList.remove(tileEntity)
+                            if (this.isBlockLoaded(tileEntity.pos)) {
+                                //Forge: Bugfix: If we set the tile entity it immediately sets it in the chunk, so we could be desyned
+                                val chunk = this.getChunk(tileEntity.pos)
+                                if (chunk.getTileEntity(
+                                        tileEntity.pos,
+                                        Chunk.EnumCreateEntityType.CHECK
+                                    ) === tileEntity
+                                ) chunk.removeTileEntity(tileEntity.pos)
+                            }
+                        }
+                    }
+                }
+
+                profiler.section("Khronus Synchronous delayedTileEntities[world]") {
+                    val khronusIterator = delayedTileEntities.iterator()
+
+                    while (khronusIterator.hasNext()) {
+                        val (tileEntity, tickRate) = khronusIterator.next()
+
+                        if (!tileEntity.isInvalid && tileEntity.hasWorld()) {
+                            if (tick % tickRate.tickRate != 0) continue
+
+                            val blockPos = tileEntity.pos
+                            //Forge: Fix TE's getting an extra tick on the client side....
+                            if (this.isBlockLoaded(
+                                    blockPos,
+                                    false
+                                ) && worldBorder.contains(blockPos)
+                            ) {
+                                try {
+                                    profiler.section("Khronus Watchdog") {
+                                        val maxTime =
+                                            TickDog.maxTickTime[tileEntity::class.java] ?: TickDog.defaultMaxTickTime
+                                        var checkup = khronusTickCheckup[tileEntity]
+
+                                        val taken =
+                                            profiler.section({ TileEntity.getKey(tileEntity.javaClass).toString() }) {
+                                                val acceleration = khronusTickAcceleration.remove(tileEntity)
+                                                val tickable = tileEntity as ITickable
+
+                                                TimeTracker.TILE_ENTITY_UPDATE.trackStart(tileEntity)
+                                                val taken: Long = measureNanoTime { tickable.update() }.nanosecondsToMicrosecondApprox()
+                                                TimeTracker.TILE_ENTITY_UPDATE.trackEnd(tileEntity)
+
+                                                if (acceleration != null) {
+                                                    repeat(acceleration) { tickable.update() }
+                                                }
 
                                                 taken
                                             }
@@ -174,19 +271,14 @@ object KhronusSynchronousWorldProcessingWithTiming : KhronusWorld() {
                                             if (checkup and 0xFF >= TickDog.checkupLimit) {
                                                 val averageTickTime = (checkup shr 8) shr TickDog.checkupLimitExponent
                                                 if (averageTickTime > maxTime) {
-                                                    khronusTileEntities[tileEntity] =
+                                                    delayedTileEntities[tileEntity] =
                                                         TemporalBounds(TickDog.microsecondsToTickDelay(
                                                             averageTickTime),
                                                             max(maxTime, (averageTickTime - maxTime).toInt()),
                                                             (averageTickTime + (maxTime shl 1)).toInt())
                                                 } else if (tickRate.minTime != null && averageTickTime < tickRate.minTime) {
-                                                    if (tileEntity is IKhronusTickable) {
-                                                        khronusTileEntities[tileEntity] =
-                                                            tickRate.copy(tickRate = 1, minTime = null, maxTime = null)
-                                                    } else {
-                                                        khronusIterator.remove()
-                                                        tickableTileEntities.add(tileEntity)
-                                                    }
+                                                    delayedTileEntities[tileEntity] =
+                                                        tickRate.copy(tickRate = 1, minTime = null, maxTime = null)
                                                 }
 
                                                 khronusTickCheckup.remove(tileEntity)

@@ -18,17 +18,18 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import static org.objectweb.asm.Opcodes.ACC_PUBLIC;
 
 public class KhronusTransformer implements IClassTransformer {
     public static final String WORLD_CLASS = "net.minecraft.world.World";
 
-    public static final Map<String, Consumer<ClassNode>> PATCHES = new HashMap<>();
+    public static final Map<String, Supplier<Consumer<ClassNode>>> PATCHES = new HashMap<>();
 
     static {
-        PATCHES.put(WORLD_CLASS, WorldTransformer.INSTANCE);
-        PATCHES.put("dev.brella.khronus.api.KhronusApi", KhronusApiTranformer.INSTANCE);
+        PATCHES.put(WORLD_CLASS, () -> WorldTransformer.INSTANCE);
+        PATCHES.put("dev.brella.khronus.api.KhronusApi", () -> KhronusApiTranformer.INSTANCE);
 
 //        METHOD_PATCHES.put(WORLD_CLASS, worldPatches);
 //        METHOD_PATCHES.put("dev.brella.khronus.api.KhronusApi", apiPatches);
@@ -70,6 +71,8 @@ public class KhronusTransformer implements IClassTransformer {
 
     @Override
     public byte[] transform(String name, String transformedName, byte[] basicClass) {
+        if (name.startsWith("java") || name.startsWith("kotlin") || transformedName.startsWith("java") || transformedName.startsWith("kotlin")) return basicClass;
+
 //        if (transformedName.equals(WORLD_CLASS)) {
 //            System.out.println("Transforming " + transformedName + "#" + "updateEntities|func_72939_s");
 //
@@ -512,12 +515,15 @@ public class KhronusTransformer implements IClassTransformer {
 //            });
 //        }
 
-        Consumer<ClassNode> transformer = PATCHES.get(transformedName);
+        Supplier<Consumer<ClassNode>> supplier = PATCHES.get(transformedName);
 
-        if (transformer != null) {
-            System.out.println("Transforming " + transformedName + " with " + transformer);
+        if (supplier != null) {
+            Consumer<ClassNode> transformer = supplier.get();
+            if (transformer != null) {
+                System.out.println("Transforming " + transformedName + " with " + transformer);
 
-            return transform(basicClass, transformedName, transformer);
+                return transform(basicClass, transformedName, transformer);
+            }
         }
 
         return basicClass;

@@ -68,6 +68,9 @@ class BlockWarpDrive : BlockContainer(Material.PORTAL) {
         }
     }
 
+    override fun getRenderLayer(): BlockRenderLayer =
+        BlockRenderLayer.CUTOUT
+
     init {
         this.defaultState = createBlockState().baseState
     }

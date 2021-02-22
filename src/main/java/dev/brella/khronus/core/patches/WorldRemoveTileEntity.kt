@@ -18,14 +18,14 @@ object WorldRemoveTileEntity : Consumer<MethodNode> {
      */
     val blockPattern = buildAsmPattern {
         aload(0)
-        getField("net/minecraft/world/World", "tickableTileEntities", "Ljava/util/List;")
+        getField("net/minecraft/world/World", fieldNames = arrayOf("tickableTileEntities", "field_175730_i"), desc = "Ljava/util/List;")
         aload(2)
         invokeInterface("java/util/List", "remove", "(Ljava/lang/Object;)Z")
         pop()
     }
 
-    val replacement by lazy {
-        buildInstructionList {
+    val replacement
+        get() = buildInstructionList {
             add(getWatchdog())
             aload(0)
             aload(1)
@@ -34,7 +34,6 @@ object WorldRemoveTileEntity : Consumer<MethodNode> {
                 "removeTileEntity",
                 "(Lnet/minecraft/world/World;Lnet/minecraft/util/math/BlockPos;Lnet/minecraft/tileentity/TileEntity;)V")
         }
-    }
 
     override fun accept(method: MethodNode) {
         var blockStart = -1

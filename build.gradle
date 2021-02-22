@@ -19,6 +19,12 @@ archivesBaseName = 'Khronus'
 
 sourceCompatibility = targetCompatibility = compileJava.sourceCompatibility = compileJava.targetCompatibility = '1.8'
 
+compileKotlin {
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+}
+
 minecraft {
     // The mappings can be changed at any time, and must be in the following format.
     // snapshot_YYYYMMDD   Snapshot are built nightly.
@@ -37,7 +43,8 @@ minecraft {
             file('src/main/resources/META-INF/ctm_at.cfg'),
             file('src/main/resources/META-INF/chisel_at.cfg'),
             file('src/main/resources/META-INF/khronus_at.cfg'),
-            file('src/main/resources/META-INF/ftblib_at.cfg')
+            file('src/main/resources/META-INF/ftblib_at.cfg'),
+            file('src/main/resources/META-INF/mekanism_at.cfg')
     )
 
     // Default run configurations.
@@ -48,6 +55,7 @@ minecraft {
 
             // Recommended logging data for a userdev environment
             property 'forge.logging.markers', 'SCAN,REGISTRIES,REGISTRYDUMP'
+            property 'fml.coreMods.load', 'dev.brella.khronus.core.KhronusCorePlugin'
 
             // Recommended logging level for the console
             property 'forge.logging.console.level', 'debug'
@@ -93,6 +101,12 @@ repositories {
     maven { url 'https://maven.tterrag.com' }
 
     maven { url "https://maven.tehnut.info" }
+
+    repositories {
+        maven {
+            url "https://www.cursemaven.com"
+        }
+    }
 }
 
 dependencies {
@@ -114,6 +128,12 @@ dependencies {
     compileOnly fg.deobf("mcp.mobius.waila:Hwyla:1.8.26-B41_1.12.2:api")
     // At runtime, use the full Hwyla jar
     runtimeOnly fg.deobf("mcp.mobius.waila:Hwyla:1.8.26-B41_1.12.2")
+
+    //Compatibility Patches
+
+    compileOnly fg.deobf("curse.maven:baubles-227083:2518667")
+    compileOnly fg.deobf("curse.maven:projecte-226410:2702991")
+    compileOnly fg.deobf("curse.maven:mekanism-268560:2835175")
 }
 
 jar {
@@ -133,4 +153,15 @@ task devJar(type: Jar) {
     println(defaultTasks)
 }
 
+task copyResources(type: Copy) {
+//    outputs.upToDateWhen { false }
+
+    String src = sourceSets.getByName("main").resources.srcDirs[0].absolutePath
+    String dst = "${buildDir.absolutePath}/classes/kotlin/main"
+    println("Src: $src\nDst: $dst")
+    from src into dst
+}
+
 jar.finalizedBy('reobfJar')
+
+compileJava.dependsOn(copyResources)

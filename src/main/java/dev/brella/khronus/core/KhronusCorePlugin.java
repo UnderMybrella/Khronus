@@ -5,7 +5,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
 
-@IFMLLoadingPlugin.SortingIndex(1001)
+@IFMLLoadingPlugin.SortingIndex(Integer.MAX_VALUE)
 public class KhronusCorePlugin implements IFMLLoadingPlugin {
     @Override
     public String[] getASMTransformerClass() {

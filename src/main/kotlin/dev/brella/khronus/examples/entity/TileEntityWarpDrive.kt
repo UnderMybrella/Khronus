@@ -13,7 +13,7 @@ import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.collections.ArrayList
 
-class TileEntityWarpDrive : TileEntity(), IKhronusTickable {
+class TileEntityWarpDrive : TileEntity(), IKhronusTickable<TileEntityWarpDrive> {
     var warpDriveBonusTicks: Int = 18
     val blacklist = listOf("khronus:warp_drive", "projecte:dm_pedestal")
 
@@ -55,14 +55,14 @@ class TileEntityWarpDrive : TileEntity(), IKhronusTickable {
                 }
             } else {
                 val tickable: MutableList<ITickable> = ArrayList()
-                val khronusTickable: MutableList<IKhronusTickable> = ArrayList()
+                val khronusTickable: MutableList<IKhronusTickable<*>> = ArrayList()
 
                 boundPos.forEach { pos ->
                     val tile = world.getTileEntity(pos) ?: return@forEach
 
                     if (tile.isInvalid || blacklist.contains(getKey(tile.javaClass).toString())) return@forEach
 
-                    if (tile is IKhronusTickable) khronusTickable.add(tile)
+                    if (tile is IKhronusTickable<*>) khronusTickable.add(tile)
                     else if (tile is ITickable) tickable.add(tile)
                 }
 
@@ -76,4 +76,6 @@ class TileEntityWarpDrive : TileEntity(), IKhronusTickable {
             }
         }
     }
+
+    override fun getSource(): TileEntityWarpDrive = this
 }

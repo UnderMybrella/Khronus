@@ -1,7 +1,7 @@
 {
   "parent": "khronus:block/dual_textured",
   "textures": {
-    "base": "minecraft:block/redstone_block",
-    "layer_1": "minecraft:item/clock_00"
+    "base": "minecraft:blocks/redstone_block",
+    "layer_1": "minecraft:items/clock_00"
   }
 }

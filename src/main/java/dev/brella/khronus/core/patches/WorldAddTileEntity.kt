@@ -3,6 +3,7 @@ package dev.brella.khronus.core.patches
 import dev.brella.khronus.core.KhronusTransformer
 import dev.brella.khronus.core.buildAsmPattern
 import dev.brella.khronus.core.buildInstructionList
+import dev.brella.khronus.core.toTextRepresentation
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.*
 import java.util.function.Consumer
@@ -46,7 +47,7 @@ object WorldAddTileEntity : Consumer<MethodNode> {
      */
     val blockPattern = buildAsmPattern {
         aload(0)
-        getField("net/minecraft/world/World", "tickableTielEntities", "Ljava/util/List;")
+        getField("net/minecraft/world/World", fieldNames = arrayOf("tickableTileEntities", "field_175730_i"), desc = "Ljava/util/List;")
         aload(1)
         invokeInterface("java/util/List", "add", "(Ljava/lang/Object;)Z")
         pop()
@@ -57,15 +58,15 @@ object WorldAddTileEntity : Consumer<MethodNode> {
      ALOAD 1
      INVOKEINTERFACE .updateEntities  (itf)
      */
-    val replacement by lazy {
-        buildInstructionList {
+    val replacement
+        get() = buildInstructionList {
             add(KhronusTransformer.getWatchdog())
+            aload(0)
             aload(1)
             invokeInterface("dev/brella/khronus/watchdogs/KhronusWatchdog",
                 "addTileEntity",
                 "(Lnet/minecraft/world/World;Lnet/minecraft/tileentity/TileEntity;)V")
         }
-    }
 
     override fun accept(method: MethodNode) {
         var checkStart = -1
@@ -103,6 +104,7 @@ object WorldAddTileEntity : Consumer<MethodNode> {
 
             println("Removed instructions")
 
+            println("Inserting before ${suffix.toTextRepresentation()}")
             method.instructions.insertBefore(suffix, replacement)
         }
     }

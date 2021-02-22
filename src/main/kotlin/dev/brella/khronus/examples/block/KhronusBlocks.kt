@@ -39,13 +39,13 @@ object KhronusBlocks {
 
     fun register(registry: IForgeRegistry<Block>) {
         blocks.forEach { (block, name) ->
-            registry.register(block.setRegistryName(MOD_ID, name).setTranslationKey(name))
+            registry.register(block.setRegistryName(ResourceLocation(MOD_ID, name)).setTranslationKey("$MOD_ID.$name"))
         }
     }
 
     fun registerItemBlocks(registry: IForgeRegistry<Item>) {
         blocks.forEach { (block, name) ->
-            registry.register(ItemBlock(block).setRegistryName(MOD_ID, name))
+            registry.register(ItemBlock(block).setRegistryName(MOD_ID, name).setTranslationKey("$MOD_ID.$name"))
         }
     }
 

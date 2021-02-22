@@ -86,13 +86,12 @@ class BlockCounter : BlockContainer(Material.CIRCUITS) {
         return TileEntityCounter()
     }
 
-    override fun getItem(worldIn: World, pos: BlockPos, state: IBlockState): ItemStack {
-        return ItemStack(KhronusBlocks.counter)
-    }
-
     override fun getRenderType(state: IBlockState): EnumBlockRenderType {
         return EnumBlockRenderType.MODEL
     }
+
+    override fun getRenderLayer(): BlockRenderLayer =
+        BlockRenderLayer.SOLID
 
     init {
         this.defaultState = createBlockState().baseState

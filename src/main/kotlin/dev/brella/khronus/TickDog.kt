@@ -79,10 +79,8 @@ object TickDog : CoroutineScope {
     @JvmStatic
     public var watchdog: KhronusWatchdog = VanillaWorldProcessing
         set(new) {
-            val old = field
-            worldTickRates.forEach { (world) -> old.onRemovedFrom(world, new) }
+            Khronus.proxy.onWatchdogSwitch(field, new)
             field = new
-            worldTickRates.forEach { (world) -> new.onAddedTo(world, old) }
         }
 
     inline fun Long.abs(): Long {
@@ -94,7 +92,7 @@ object TickDog : CoroutineScope {
         this - ((this - 1) and (this - 1) shr 31)
 
     inline fun microsecondsToTickDelay(microseconds: Long): Int =
-        (microseconds shr tickRateExponent).toInt().atLeastNonZero() + 1
+        ((microseconds shr tickRateExponent).toInt().coerceIn(0, 127) + 1)
 
     init {
         worldTickRateJob = launch {

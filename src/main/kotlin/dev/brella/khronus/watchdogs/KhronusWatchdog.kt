@@ -21,6 +21,7 @@ interface KhronusWatchdog {
     fun onAddedTo(world: World, replacing: KhronusWatchdog) {}
 }
 
+inline val World.delayedTickableTileEntities get() = KhronusApi.getDelayedTileEntities(this)
 inline val World.khronusTickableTileEntities get() = KhronusApi.getKhronusTileEntities(this)
 inline val World.tickAcceleration get() = KhronusApi.getTickAcceleration(this)
 inline val World.tickCheckup get() = KhronusApi.getTickCheckup(this)

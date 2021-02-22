@@ -28,7 +28,7 @@ import net.minecraftforge.items.wrapper.SidedInvWrapper
 import kotlin.math.floor
 import kotlin.math.log
 
-class TileEntityLavaFurnace : TileEntityLockable(), IKhronusTickable, ISidedInventory {
+class TileEntityLavaFurnace : TileEntityLockable(), IKhronusTickable<TileEntityLavaFurnace>, ISidedInventory {
     private var furnaceItemStacks = NonNullList.withSize(3, ItemStack.EMPTY)
     private var furnaceBurnTime = 0
     private var currentItemBurnTime = 0
@@ -329,6 +329,8 @@ class TileEntityLavaFurnace : TileEntityLockable(), IKhronusTickable, ISidedInve
             facing
         )
     }
+
+    override fun getSource(): TileEntityLavaFurnace = this
 
     companion object {
         private val SLOTS_TOP = intArrayOf(0)

@@ -6,10 +6,12 @@ import org.objectweb.asm.tree.MethodNode
 import java.util.function.Consumer
 
 object WorldTransformer : Consumer<ClassNode> {
+    public const val DELAYED_TICKABLE_TILE_ENTITIES = "delayedTickableTileEntities"
     public const val KHRONUS_TICKABLE_TILE_ENTITIES = "khronusTickableTileEntities"
     public const val KHRONUS_TICK_ACCELERATION = "tickAcceleration"
     public const val KHRONUS_TICK_LENGTH = "tickLength"
     public const val KHRONUS_TICK_CHECKUPS = "tickCheckups"
+    public const val KHRONUS_TICK = "tick"
 
     val methodPatches: Map<String, Consumer<MethodNode>> = mapOf(
         "updateEntities" to WorldUpdateEntities,
@@ -29,9 +31,15 @@ object WorldTransformer : Consumer<ClassNode> {
 
         println("- Seizing the means of ticking")
         classNode.visitField(ACC_PUBLIC,
+            DELAYED_TICKABLE_TILE_ENTITIES,
+            "Ljava/util/Map;",
+            "Ljava/util/Map<Lnet/minecraft/tileentity/TileEntity;Ldev/brella/khronus/api/TemporalBounds;>;",
+            null).visitEnd()
+
+        classNode.visitField(ACC_PUBLIC,
             KHRONUS_TICKABLE_TILE_ENTITIES,
             "Ljava/util/Map;",
-            "Ljava/util/Map<Lnet/minecraft/tileentity/TileEntity;Ldev/brella/khronus/TemporalBounds;>;",
+            "Ljava/util/Map<Ldev/brella/khronus/api/IKhronusTickable;Ldev/brella/khronus/api/TemporalBounds;>;",
             null).visitEnd()
 
         println("- Accelerating our realm")

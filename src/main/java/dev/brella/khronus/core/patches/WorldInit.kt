@@ -2,10 +2,9 @@ package dev.brella.khronus.core.patches
 
 import dev.brella.khronus.core.InstructionList
 import dev.brella.khronus.core.buildInstructionList
-import net.minecraft.tileentity.TileEntity
+import dev.brella.khronus.core.toTextRepresentation
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.*
-import java.util.*
 import java.util.function.Consumer
 
 object WorldInit : Consumer<MethodNode> {
@@ -35,21 +34,41 @@ object WorldInit : Consumer<MethodNode> {
             false))
     }
 
-    val newInstructions = buildInstructionList {
-        aload(0)
-        putField("net/minecraft/world/World", WorldTransformer.KHRONUS_TICKABLE_TILE_ENTITIES, "Ljava/util/Map;") { weakHashMapInit() }
+    val newInstructions
+        get() = buildInstructionList {
+            var lineNumber = 116
 
-        aload(0)
-        putField("net/minecraft/world/World", WorldTransformer.KHRONUS_TICK_ACCELERATION, "Ljava/util/Map;") { weakHashMapInit() }
+            for (name in arrayOf(WorldTransformer.DELAYED_TICKABLE_TILE_ENTITIES, WorldTransformer.KHRONUS_TICKABLE_TILE_ENTITIES, WorldTransformer.KHRONUS_TICK_ACCELERATION, WorldTransformer.KHRONUS_TICK_LENGTH, WorldTransformer.KHRONUS_TICK_CHECKUPS)) {
+                val label = LabelNode()
 
-        aload(0)
-        putField("net/minecraft/world/World", WorldTransformer.KHRONUS_TICK_LENGTH, "Ljava/util/Map;") { weakHashMapInit() }
+                add(label)
+                add(LineNumberNode(lineNumber++, label))
 
-        aload(0)
-        putField("net/minecraft/world/World", WorldTransformer.KHRONUS_TICK_CHECKUPS, "Ljava/util/Map;") { weakHashMapInit() }
-    }
+                aload(0)
+                new("java/util/WeakHashMap")
+                dup()
+                invokeSpecial("java/util/WeakHashMap", "<init>", "()V")
+                putField("net/minecraft/world/World", name, "Ljava/util/Map;")
+            }
+        }
 
     override fun accept(method: MethodNode) {
-        method.instructions.insertBefore(method.instructions.last.previous, newInstructions)
+        println("World#init: ")
+        method.instructions.iterator().forEach { println(it.toTextRepresentation()) }
+
+        println("///Transforming///")
+
+        try {
+            method.instructions.iterator().forEach { node ->
+                if (node.opcode == Opcodes.PUTFIELD) {
+                    println("Inserting @ $node")
+                    method.instructions.insert(node, newInstructions)
+                    return
+                }
+            }
+        } finally {
+            println("Post Transformation: ")
+            method.instructions.iterator().forEach { println(it.toTextRepresentation()) }
+        }
     }
 }

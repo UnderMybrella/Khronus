@@ -3,6 +3,7 @@ package dev.brella.khronus.core.patches
 import dev.brella.khronus.core.KhronusTransformer.getWatchdog
 import dev.brella.khronus.core.buildAsmPattern
 import dev.brella.khronus.core.buildInstructionList
+import dev.brella.khronus.core.toTextRepresentation
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.*
 import java.util.HashMap
@@ -23,8 +24,8 @@ object WorldUpdateEntities : Consumer<MethodNode> {
         putField("net/minecraft/world/World", fieldNames = arrayOf("processingLoadedTiles", "field_147481_N"))
     }
 
-    val replacement by lazy {
-        buildInstructionList {
+    val replacement
+        get() = buildInstructionList {
             add(getWatchdog())
             aload(0)
             invokeInterface("dev/brella/khronus/watchdogs/KhronusWatchdog",
@@ -32,7 +33,6 @@ object WorldUpdateEntities : Consumer<MethodNode> {
                 "(Lnet/minecraft/world/World;)V",
                 true)
         }
-    }
 
     override fun accept(method: MethodNode) {
         var blockStart = -1
@@ -99,7 +99,9 @@ object WorldUpdateEntities : Consumer<MethodNode> {
                 }
             }
             nodes.forEach(method.instructions::remove)
-            method.instructions.insertBefore(method.instructions.get(blockStart), replacement)
+            val suffix = method.instructions.get(blockStart)
+            println("Inserting ourselves right before " + suffix.toTextRepresentation())
+            method.instructions.insertBefore(suffix, replacement)
         }
     }
 }

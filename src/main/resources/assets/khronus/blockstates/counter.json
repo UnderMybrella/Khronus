@@ -1,7 +1,16 @@
 {
+  "forge_marker": 1,
+  "defaults": {
+    "textures": {
+      "all": "blocks/redstone_block"
+    }
+  },
   "variants": {
-    "": {
-      "model": "khronus:block/counter"
+    "normal": {
+      "model": "cube_all"
+    },
+    "inventory": {
+      "model": "cube_all"
     }
   }
 }

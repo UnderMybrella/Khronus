@@ -1,34 +1,48 @@
 package dev.brella.khronus
 
 import dev.brella.khronus.Khronus.MOD_ID
+import dev.brella.khronus.api.EnumLagTuning
+import dev.brella.khronus.api.IKhronusTickable
+import dev.brella.khronus.api.ILagTester
 import dev.brella.khronus.examples.block.KhronusBlocks
 import dev.brella.khronus.examples.entity.TileEntityCounter
 import dev.brella.khronus.examples.entity.TileEntityLavaFurnace
 import dev.brella.khronus.examples.entity.TileEntityWarpDrive
 import dev.brella.khronus.examples.item.KhronusItems
 import dev.brella.khronus.networking.KhronusNetworking
-import dev.brella.khronus.overrides.vanilla.KhronusVanilla
+import dev.brella.khronus.overrides.KhronusOverrides
+import dev.brella.khronus.overrides.vanilla.EntityKhronusItem
 import dev.brella.khronus.proxy.KhronusProxy
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
 import net.minecraft.block.Block
 import net.minecraft.creativetab.CreativeTabs
+import net.minecraft.entity.item.EntityItem
 import net.minecraft.item.Item
 import net.minecraft.item.ItemStack
 import net.minecraft.item.crafting.IRecipe
+import net.minecraft.nbt.NBTBase
+import net.minecraft.util.EnumFacing
 import net.minecraft.util.ResourceLocation
 import net.minecraft.util.text.TextComponentString
 import net.minecraftforge.client.event.ModelRegistryEvent
 import net.minecraftforge.client.event.TextureStitchEvent
 import net.minecraftforge.common.MinecraftForge
+import net.minecraftforge.common.capabilities.Capability
+import net.minecraftforge.common.capabilities.CapabilityManager
 import net.minecraftforge.common.config.Configuration
 import net.minecraftforge.event.RegistryEvent
+import net.minecraftforge.event.entity.EntityJoinWorldEvent
 import net.minecraftforge.fml.common.Mod
 import net.minecraftforge.fml.common.SidedProxy
+import net.minecraftforge.fml.common.event.FMLPostInitializationEvent
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent
 import net.minecraftforge.fml.common.event.FMLServerStartingEvent
+import net.minecraftforge.fml.common.eventhandler.EventPriority
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent
+import net.minecraftforge.fml.common.registry.EntityEntry
+import net.minecraftforge.fml.common.registry.EntityEntryBuilder
 import net.minecraftforge.fml.common.registry.GameRegistry
 import org.apache.logging.log4j.Logger
 import java.util.concurrent.Executors
@@ -44,13 +58,13 @@ import kotlin.math.roundToInt
 )
 @Mod.EventBusSubscriber(modid = MOD_ID)
 object Khronus : CoroutineScope {
-    public const val MOD_ID = "khronus"
-    public const val MOD_NAME = "Khronus"
-    public const val VERSION = "1.0.0a"
+    const val MOD_ID = "khronus"
+    const val MOD_NAME = "Khronus"
+    const val VERSION = "1.0.0a"
 
-    public lateinit var logger: Logger
+    lateinit var logger: Logger
 
-    public val creativeTab: CreativeTabs = object : CreativeTabs(MOD_ID) {
+    val creativeTab: CreativeTabs = object : CreativeTabs(MOD_ID) {
         override fun createIcon(): ItemStack = ItemStack(KhronusBlocks.litLavaFurnace)
     }
 
@@ -58,13 +72,13 @@ object Khronus : CoroutineScope {
         serverSide = "dev.brella.khronus.proxy.ServerProxy",
         clientSide = "dev.brella.khronus.proxy.ClientProxy"
     )
-    public lateinit var proxy: KhronusProxy
+    lateinit var proxy: KhronusProxy
 
     override val coroutineContext: CoroutineContext =
         SupervisorJob() + Executors.newSingleThreadExecutor { task -> Thread(task, MOD_NAME).apply { isDaemon = true } }
             .asCoroutineDispatcher()
 
-    public lateinit var config: Configuration
+    lateinit var config: Configuration
 
     @Mod.EventHandler
     fun preInitialisation(event: FMLPreInitializationEvent) {
@@ -76,11 +90,49 @@ object Khronus : CoroutineScope {
 //        Minecraft.getMinecraft().connection
 
         MinecraftForge.EVENT_BUS.register(proxy)
-        MinecraftForge.EVENT_BUS.register(KhronusVanilla)
+        MinecraftForge.EVENT_BUS.register(KhronusOverrides)
 
         GameRegistry.registerTileEntity(TileEntityLavaFurnace::class.java, ResourceLocation(MOD_ID, "lava_furnace"))
         GameRegistry.registerTileEntity(TileEntityWarpDrive::class.java, ResourceLocation(MOD_ID, "warp_drive"))
         GameRegistry.registerTileEntity(TileEntityCounter::class.java, ResourceLocation(MOD_ID, "counter"))
+
+        CapabilityManager.INSTANCE.register(ILagTester::class.java, object : Capability.IStorage<ILagTester> {
+            override fun writeNBT(
+                capability: Capability<ILagTester>?,
+                instance: ILagTester?,
+                side: EnumFacing?
+            ): NBTBase? = null
+
+            override fun readNBT(
+                capability: Capability<ILagTester>?,
+                instance: ILagTester?,
+                side: EnumFacing?,
+                nbt: NBTBase?
+            ) {
+            }
+        }) { EnumLagTuning.OFF }
+
+        CapabilityManager.INSTANCE.register(IKhronusTickable::class.java,
+            object : Capability.IStorage<IKhronusTickable<*>> {
+                override fun readNBT(
+                    capability: Capability<IKhronusTickable<*>>?,
+                    instance: IKhronusTickable<*>?,
+                    side: EnumFacing?,
+                    nbt: NBTBase?
+                ) {
+                }
+
+                override fun writeNBT(
+                    capability: Capability<IKhronusTickable<*>>?,
+                    instance: IKhronusTickable<*>?,
+                    side: EnumFacing?
+                ): NBTBase? = null
+            }) { null }
+    }
+
+    @Mod.EventHandler
+    fun postInitialisation(event: FMLPostInitializationEvent) {
+        KhronusOverrides.loadOverrides()
     }
 
     @Mod.EventHandler
@@ -177,8 +229,77 @@ object Khronus : CoroutineScope {
     }
 
     @SubscribeEvent
+    fun registerEntities(event: RegistryEvent.Register<EntityEntry>) {
+        event.registry.register(
+            EntityEntryBuilder.create<EntityKhronusItem>()
+                .entity(EntityKhronusItem::class.java)
+                .name("Khronus Item")
+                .id(ResourceLocation(MOD_ID, "khronus_item"), 0)
+                .factory(::EntityKhronusItem)
+                .tracker(64, 20, true)
+                .build()
+        )
+    }
+
+    @SubscribeEvent
     fun atlasStitching(event: TextureStitchEvent.Pre) {
 //        DESTRUCTION_STAGES = Array(10) { i -> event.map.registerSprite(ResourceLocation("blocks/destroy_stage_$i")) }
 //        COMPRESSION_STAGES = Array(1) { i -> event.map.registerSprite(ResourceLocation(MOD_ID, "compression/compression_$i"))}
+    }
+
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    fun entityJoinEvent(event: EntityJoinWorldEvent) {
+        if (event.isCanceled || event.entity is EntityKhronusItem) return
+
+        val eventItem = event.entity as? EntityItem ?: return
+        val otherItems =
+            event.world.getEntitiesWithinAABB(EntityItem::class.java, eventItem.entityBoundingBox.grow(0.5, 0.5, 0.5))
+
+        val otherItemStack = otherItems.filter { item ->
+            if (eventItem === item) {
+                false
+            } else if (item.isEntityAlive && eventItem.isEntityAlive) {
+                val itemstack: ItemStack = item.item
+                val itemstack1: ItemStack = eventItem.item
+//                if (item.pickupDelay != 32767 && eventItem.pickupDelay != 32767) {
+                if (item.age != -32768 && eventItem.age != -32768) {
+                    if (itemstack1.item !== itemstack.item) {
+                        false
+                    } else if (itemstack1.hasTagCompound() xor itemstack.hasTagCompound()) {
+                        false
+                    } else if (itemstack1.hasTagCompound() && itemstack1.tagCompound != itemstack.tagCompound) {
+                        false
+                    } else if (itemstack1.item.hasSubtypes && itemstack1.metadata != itemstack.metadata) {
+                        false
+                    } else itemstack.areCapsCompatible(itemstack1)
+                } else {
+                    false
+                }
+            } else {
+                false
+            }
+        }.maxBy { it.age } ?: return
+
+        if (otherItemStack::class.java == EntityItem::class.java) {
+            val repl = EntityKhronusItem(otherItemStack.world,
+                otherItemStack.posX,
+                otherItemStack.posY,
+                otherItemStack.posZ,
+                otherItemStack.item.copy())
+            repl.setPickupDelay(otherItemStack.pickupDelay)
+
+
+            if (event.world.spawnEntity(repl)) {
+                repl.itemSize += eventItem.item.count
+                otherItemStack.setDead()
+                event.isCanceled = true
+            }
+        } else if (otherItemStack::class.java == EntityKhronusItem::class.java) {
+            (otherItemStack as EntityKhronusItem).itemSize += eventItem.item.count
+
+            event.isCanceled = true
+        } else {
+            logger.warn("Not overriding entity of type ${otherItemStack::class.java} ($otherItemStack)")
+        }
     }
 }

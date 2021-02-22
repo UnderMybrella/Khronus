@@ -3,6 +3,7 @@ package dev.brella.khronus.integration
 import dev.brella.khronus.*
 import dev.brella.khronus.api.IKhronusTickable
 import dev.brella.khronus.watchdogs.KhronusWorld
+import dev.brella.khronus.watchdogs.delayedTickableTileEntities
 import dev.brella.khronus.watchdogs.khronusTickableTileEntities
 import dev.brella.khronus.watchdogs.tickLength
 import mcp.mobius.waila.api.IWailaConfigHandler
@@ -26,7 +27,10 @@ object WatchdogProvider : IWailaDataProvider {
         if (accessor.nbtData.hasKey("khronus_rate")) {
             tooltip.add("${TextFormatting.RED}${TextFormatting.ITALIC}Ticks once every ${accessor.nbtData.getInteger("khronus_rate")} ticks")
         } else {
-            accessor.tileEntity?.let { it.world.khronusTickableTileEntities[it] }?.let { tickRate ->
+            accessor.tileEntity?.let { te ->
+                te.asKhronusTickable()?.let { kte -> te.world.khronusTickableTileEntities[kte] }
+                    ?: te.world.delayedTickableTileEntities[te]
+            }?.let { tickRate ->
                 tooltip.add("${TextFormatting.LIGHT_PURPLE}${TextFormatting.ITALIC}Ticks once every ${tickRate.tickRate} ticks")
             }
         }
@@ -50,7 +54,8 @@ object WatchdogProvider : IWailaDataProvider {
         accessor: IWailaDataAccessor,
         config: IWailaConfigHandler
     ): MutableList<String> {
-        if (accessor.tileEntity is IKhronusTickable) tooltip.add("${TextFormatting.BLUE}${TextFormatting.ITALIC}Supports Khronus Ticks")
+        accessor.tileEntity?.asKhronusTickable()
+            ?.let { tooltip.add("${TextFormatting.BLUE}${TextFormatting.ITALIC}Supports Khronus Ticks") }
 
         return tooltip
     }
@@ -62,7 +67,10 @@ object WatchdogProvider : IWailaDataProvider {
         world: World,
         pos: BlockPos
     ): NBTTagCompound {
-        world.khronusTickableTileEntities[te]?.let { tag.setInteger("khronus_rate", it.tickRate) }
+        te.asKhronusTickable()?.let { world.khronusTickableTileEntities[it] }
+            ?.let { tag.setInteger("khronus_rate", it.tickRate) }
+            ?: world.delayedTickableTileEntities[te]?.let { tag.setInteger("khronus_rate", it.tickRate) }
+        
         world.tickLength[te]?.let { tag.setLong("khronus_length", it) }
 
         return tag

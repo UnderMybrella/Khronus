@@ -46,9 +46,6 @@ import java.util.*
 open class WorldDelegate<T: World>(protected val world: WeakReference<T>) :
     World(world.get()!!.saveHandler, world.get()!!.worldInfo, world.get()!!.provider, world.get()!!.profiler, world.get()!!.isRemote) {
     companion object {
-        private val LOOKUP = MethodHandles.lookup()
-        fun Method.toMethodHandle(): MethodHandle = LOOKUP.unreflect(this.apply { isAccessible = true })
-
         val TICK_PLAYERS = ObfuscationReflectionHelper.findMethod(World::class.java, "tickPlayers", Void.TYPE).toMethodHandle()
         val UPDATE_WEATHER = ObfuscationReflectionHelper.findMethod(World::class.java, "updateWeather", Void.TYPE).toMethodHandle()
         val PLAY_MOOD_SOUND_AND_CHECK_LIGHT = ObfuscationReflectionHelper.findMethod(World::class.java, "playMoodSoundAndCheckLight", Void.TYPE, Int::class.javaPrimitiveType, Int::class.javaPrimitiveType, Chunk::class.java).toMethodHandle()

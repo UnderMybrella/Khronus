@@ -5,7 +5,7 @@ import net.minecraft.nbt.NBTTagCompound
 import net.minecraft.tileentity.TileEntity
 import java.util.*
 
-class TileEntityCounter : TileEntity(), IKhronusTickable {
+class TileEntityCounter : TileEntity(), IKhronusTickable<TileEntityCounter> {
     var startupTime: Long = System.currentTimeMillis()
     var counter: Long = 0
 
@@ -30,4 +30,6 @@ class TileEntityCounter : TileEntity(), IKhronusTickable {
 
         markDirty()
     }
+
+    override fun getSource(): TileEntityCounter = this
 }
